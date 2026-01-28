@@ -1,0 +1,30 @@
+# --- 操作系统文件 ---
+.DS_Store
+Thumbs.db
+
+# --- 编辑器/IDE ---
+.idea/
+.vscode/
+*.swp
+
+# --- 前端 (Vue) ---
+frontend/node_modules/
+frontend/dist/
+frontend/npm-debug.log*
+frontend/yarn-debug.log*
+frontend/yarn-error.log*
+frontend/.env.local
+frontend/.env.*.local
+
+# --- 后端 (Django/Python) ---
+backend/venv/
+backend/__pycache__/
+*.py[cod]
+*$py.class
+backend/db.sqlite3
+backend/media/
+# 如果你想保护数据库密码，把 .env 也加进去，但毕设演示为了方便可以不加
+# backend/.env 
+
+# --- 其他 ---
+*.log
