@@ -4,14 +4,19 @@ const routes = [
   {
     path: '/',
     name: 'Home',
-    component: () => import('@/views/home/index.vue'), // 懒加载
-    meta: { title: '首页' }
+    component: () => import('@/views/home/index.vue')
   },
   {
     path: '/login',
     name: 'Login',
-    component: () => import('@/views/auth/login.vue'),
-    meta: { title: '登录' }
+    component: () => import('@/views/auth/login.vue')
+  },
+  // 【新增：发布商品页面】
+  {
+    path: '/post',
+    name: 'Post',
+    component: () => import('@/views/goods/Post.vue'),
+    meta: { requireAuth: true } // 只有登录才能发布
   }
 ]
 

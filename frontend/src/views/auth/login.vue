@@ -62,27 +62,30 @@ const rules = {
 const handleLogin = () => {
   if (!loginFormRef.value) return
   
-  // 1. 校验表单
   loginFormRef.value.validate(async (valid) => {
     if (valid) {
       loading.value = true
       try {
-        // 2. 调用后端接口 (暂时会报错，因为后端还没写)
-        console.log('正在向后端发送数据:', loginForm)
+        // 1. 调用真实后端接口
+        // 后端返回的数据结构通常是: { access: "...", refresh: "..." }
+        const res = await login(loginForm)
         
-        // const res = await login(loginForm) // 真实请求暂时注释掉，防止报错卡住
+        console.log('登录成功，后端返回:', res)
         
-        // --- 模拟登录成功演示 (后端写好后删除下面这段) ---
-        await new Promise(r => setTimeout(r, 1000)) // 假装加载1秒
-        if(loginForm.username) {
-            ElMessage.success('模拟登录成功')
-            localStorage.setItem('token', 'fake-token-123') // 模拟存token
-            router.push('/') // 跳转到首页
+        // 2. 存储 Token (注意：simplejwt 返回的是 access)
+        if (res.access) {
+            localStorage.setItem('token', res.access)
+            localStorage.setItem('refresh_token', res.refresh) // 可选：用于刷新
+            
+            ElMessage.success('登录成功')
+            router.push('/') // 跳转首页
+        } else {
+            ElMessage.error('登录失败：未获取到令牌')
         }
-        // ---------------------------------------------
-        
+
       } catch (error) {
-        console.error(error)
+        console.error('登录报错:', error)
+        // 错误提示已在 request.js 拦截器中统一处理，这里不用写了
       } finally {
         loading.value = false
       }

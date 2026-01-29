@@ -6,7 +6,7 @@ const service = axios.create({
   // 基础 URL，配合 vite.config.js 中的 proxy 代理
   // 发送请求时会自动带上 /api 前缀，例如 /api/login
   baseURL: '/api', 
-  timeout: 5000 // 请求超时时间：5秒
+  timeout: 60000 // 请求超时时间为一分钟
 })
 
 // 2. 请求拦截器 (Request Interceptor)
