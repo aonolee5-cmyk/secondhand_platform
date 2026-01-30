@@ -21,5 +21,16 @@ class User(AbstractUser):
         verbose_name_plural = verbose_name
         db_table = "users_user" # 指定数据库表名
 
+class Address(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="addresses")
+    receiver = models.CharField(max_length=20, verbose_name="收货人")
+    mobile = models.CharField(max_length=11, verbose_name="联系电话")
+    region = models.CharField(max_length=100, verbose_name="省市区")
+    detail = models.CharField(max_length=255, verbose_name="详细地址")
+    is_default = models.BooleanField(default=False, verbose_name="是否默认")
+
+    class Meta:
+        verbose_name = "收货地址"
+        db_table = "users_address"
     def __str__(self):
         return self.username

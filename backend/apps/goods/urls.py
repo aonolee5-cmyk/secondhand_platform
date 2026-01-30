@@ -9,6 +9,7 @@ router = DefaultRouter()
 # 这样会自动生成 /api/goods/categories/ 和 /api/goods/list/ 的各种增删改查接口
 router.register(r'categories', CategoryViewSet)
 router.register(r'products', ProductViewSet,basename='product')
+router.register(r'list', ProductViewSet)
 
 # 3. 将路由器的 URL 加入到 urlpatterns 中
 urlpatterns = [

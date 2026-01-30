@@ -66,19 +66,16 @@ const handleLogin = () => {
     if (valid) {
       loading.value = true
       try {
-        // 1. 调用真实后端接口
-        // 后端返回的数据结构通常是: { access: "...", refresh: "..." }
         const res = await login(loginForm)
-        
         console.log('登录成功，后端返回:', res)
         
-        // 2. 存储 Token (注意：simplejwt 返回的是 access)
+        // 2. 存储 Token
         if (res.access) {
             localStorage.setItem('token', res.access)
             localStorage.setItem('refresh_token', res.refresh) // 可选：用于刷新
             
             ElMessage.success('登录成功')
-            router.push('/') // 跳转首页
+            router.replace('/') // 跳转首页
         } else {
             ElMessage.error('登录失败：未获取到令牌')
         }

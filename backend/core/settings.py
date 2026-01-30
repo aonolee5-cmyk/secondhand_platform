@@ -15,6 +15,7 @@ Django settings for core project.
 import os
 import sys
 from pathlib import Path
+from datetime import timedelta
 
 # 1. 定义项目根目录 (E:\secondhand_platform\backend)
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -39,6 +40,15 @@ DEBUG = True
 
 ALLOWED_HOSTS = []
 
+SIMPLE_JWT = {
+    'access_token_lifetime': timedelta(days=1),
+    'refresh_token_lifetime': timedelta(days=7),
+    'rotate_refresh_tokens': True,
+    'blacklist_after_rotation': True,
+    'algorithm': 'HS256',
+    'SIGNING_KEY': SECRET_KEY,
+    'auth_header_types': ('Bearer',),
+}
 
 # Application definition
 
@@ -49,7 +59,8 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-
+    'django_filters',
+    
     # 第三方库
     'rest_framework',
     'corsheaders',  # 跨域处理

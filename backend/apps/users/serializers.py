@@ -1,15 +1,23 @@
+from .models import Address
 from rest_framework import serializers
 from django.contrib.auth import get_user_model
 
 User = get_user_model()
 
-class UserSerializer(serializers.ModelSerializer):
+class UserProfileSerializer(serializers.ModelSerializer):
     """
     用于展示用户信息
     """
     class Meta:
         model = User
-        fields = ['id', 'username', 'mobile', 'email', 'avatar', 'credit_score', 'is_verified']
+        fields = ['id', 'username', 'nickname', 'mobile', 'avatar', 'real_name', 'id_card', 'is_verified', 'credit_score']
+        read_only_fields = ['username', 'credit_score', 'is_verified']
+
+class AddressSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Address
+        fields = '__all__'
+        read_only_fields = ['user']
 
 class RegisterSerializer(serializers.ModelSerializer):
     """

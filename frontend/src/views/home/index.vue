@@ -32,7 +32,10 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import request from '@/utils/request'
+import { useRoute } from 'vue-router'
+import { searchProducts } from '@/api/goods'
 
+const route = useRoute()
 const productList = ref([])
 
 onMounted(async () => {
@@ -41,6 +44,51 @@ onMounted(async () => {
   // 注意：因为我们后端逻辑里，发布后默认是 audit (审核中)
   // 你需要在后台手动把商品的 status 改成 onsale，首页才能看到
   productList.value = res.results || res 
+})
+
+// 
+const fetchProducts = async () => {
+  const params = {
+    search: route.query.q, // 获取 URL 里的搜索词
+    category: route.query.cat
+  }
+  try {
+    const res = await searchProducts(params)
+    // 这种写法兼容性最强：
+    productList.value = Array.isArray(res) ? res : (res.results || [])
+  } catch (error) {
+    console.error("加载商品失败", error)
+  }
+}
+
+const loadData = async () => {
+  const params = {
+    // 关键点：从当前路由的 query 中获取 q 参数
+    search: route.query.q || '', 
+    category: route.query.cat || '',
+    status: 'onsale'
+  }
+  console.log('正在根据参数搜索:', params)
+  try {
+    const res = await searchProducts(params)
+    productList.value = Array.isArray(res) ? res : (res.results || [])
+  } catch (err) {
+    console.error('搜索失败', err)
+  }
+}
+
+
+watch(
+  () => route.query,
+  () => {
+    loadData()
+  },
+  { deep: true } // 深度监听
+)
+
+onMounted(() => {
+  loadData()
+  // 别忘了加载分类（如果有分类筛选的话）
 })
 </script>
 

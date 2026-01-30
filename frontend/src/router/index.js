@@ -17,6 +17,12 @@ const routes = [
     name: 'Post',
     component: () => import('@/views/goods/Post.vue'),
     meta: { requireAuth: true } // 只有登录才能发布
+  },
+
+  {
+    path: '/my-products',
+    name: 'MyProducts',
+    component: () => import('@/views/user/MyProducts.vue'),
   }
 ]
 

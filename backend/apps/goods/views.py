@@ -7,6 +7,8 @@ from .serializers import CategorySerializer, ProductSerializer
 from rest_framework.exceptions import ValidationError
 from .utils import DFAFilter
 from .models import SensitiveWord
+from rest_framework import filters
+from django_filters.rest_framework import DjangoFilterBackend
 
 class CategoryViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = Category.objects.all()
@@ -16,6 +18,10 @@ class ProductViewSet(viewsets.ModelViewSet):
     queryset = Product.objects.all()
     serializer_class = ProductSerializer
     permission_classes = [IsAuthenticated]
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
+    filterset_fields = ['category', 'status'] # 允许按分类和状态过滤
+    search_fields = ['title', 'desc']        # 允许按标题和描述搜索
+    ordering_fields = ['price', 'create_time']
 
     def perform_create(self, serializer):
         # 发布商品时，自动关联当前登录用户
@@ -23,7 +29,32 @@ class ProductViewSet(viewsets.ModelViewSet):
         # title = self.request.data.get('title', '')
         # desc = self.request.data.get('desc', '')
 
-    
+    def get_queryset(self):
+        """
+        优化逻辑：
+        如果请求带有 'mine=1' 参数，则只返回当前用户的商品
+        否则只返回状态为 'onsale' (在售) 的商品给普通游客
+        """
+        user = self.request.user
+        is_mine = self.request.query_params.get('mine') == '1'
+        
+        if is_mine:
+            if self.request.user.is_authenticated:
+                return Product.objects.filter(owner=self.request.user)
+            else:
+                return Product.objects.none()
+        return Product.objects.filter(status='onsale')
+
+    # 增加下架接口
+    @action(detail=True, methods=['post'])
+    def change_status(self, request, pk=None):
+        product = self.get_object()
+        new_status = request.data.get('status')
+        if new_status in ['onsale', 'off', 'sold']:
+            product.status = new_status
+            product.save()
+            return Response({'status': 'success'})
+        return Response({'error': '状态非法'}, status=400)
 
 def check_sensitive_words(content):
     """
