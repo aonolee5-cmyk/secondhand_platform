@@ -3,10 +3,10 @@
     <el-card class="auth-card" header="用户注册">
       <el-form :model="regForm" label-width="80px">
         <el-form-item label="用户名">
-          <el-input v-model="regForm.username" placeholder="建议使用学号" />
+          <el-input v-model="regForm.username" placeholder="请输入用户名" />
         </el-form-item>
         <el-form-item label="手机号">
-          <el-input v-model="regForm.mobile" placeholder="用于交易联系" />
+          <el-input v-model="regForm.mobile" placeholder="请输入手机号" />
         </el-form-item>
         <el-form-item label="密码">
           <el-input v-model="regForm.password" type="password" show-password />

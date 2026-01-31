@@ -45,8 +45,3 @@ export function updateProductStatus(id, status) {
     data: { status } 
   })
 }
-
-// 搜索商品
-export function searchProducts(params) {
-  return request({ url: '/goods/list/', method: 'get', params })
-}

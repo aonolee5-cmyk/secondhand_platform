@@ -28,7 +28,7 @@
         </el-form-item>
 
         <el-form-item label="详细描述">
-          <el-input v-model="form.desc" type="textarea" rows="4" placeholder="说说你的宝贝是从哪买的，成色如何..." />
+          <el-input v-model="form.desc" type="textarea" :rows="4" placeholder="说说你的宝贝是从哪买的，成色如何..." />
         </el-form-item>
 
         <el-form-item>

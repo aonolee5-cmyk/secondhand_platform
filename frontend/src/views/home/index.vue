@@ -34,6 +34,7 @@ import { ref, onMounted } from 'vue'
 import request from '@/utils/request'
 import { useRoute } from 'vue-router'
 import { searchProducts } from '@/api/goods'
+import { watch } from 'vue'
 
 const route = useRoute()
 const productList = ref([])
@@ -61,19 +62,22 @@ const fetchProducts = async () => {
   }
 }
 
-const loadData = async () => {
-  const params = {
-    // 关键点：从当前路由的 query 中获取 q 参数
-    search: route.query.q || '', 
-    category: route.query.cat || '',
-    status: 'onsale'
-  }
-  console.log('正在根据参数搜索:', params)
+const loadProducts = async () => {
+  // 💡 优化：只发送有值的参数
+  const params = {}
+  if (route.query.q) params.search = route.query.q
+  if (route.query.cat) params.category = route.query.cat
+  
+  // 强制指定只看在售的
+  params.status = 'onsale'
+
+  console.log('--- 准备请求后端 ---', params)
+  
   try {
     const res = await searchProducts(params)
     productList.value = Array.isArray(res) ? res : (res.results || [])
-  } catch (err) {
-    console.error('搜索失败', err)
+  } catch (error) {
+    console.error('加载失败', error)
   }
 }
 
@@ -81,13 +85,14 @@ const loadData = async () => {
 watch(
   () => route.query,
   () => {
-    loadData()
+    console.log('路由参数变化了', route.query)
+    loadProducts()
   },
   { deep: true } // 深度监听
 )
 
 onMounted(() => {
-  loadData()
+  loadProducts()
   // 别忘了加载分类（如果有分类筛选的话）
 })
 </script>
