@@ -3,15 +3,26 @@ from django.contrib.auth.models import AbstractUser
 
 class User(AbstractUser):
     """
-    自定义用户模型
+    用户模型
     """
     mobile = models.CharField(max_length=11, unique=True, verbose_name="手机号")
     avatar = models.ImageField(upload_to='avatars/', null=True, blank=True, verbose_name="头像")
+    nickname = models.CharField(max_length=30, null=True, blank=True, verbose_name="昵称")
+    bio = models.TextField(null=True, blank=True, verbose_name="个人简介")
     
     # 实名认证字段
     real_name = models.CharField(max_length=20, null=True, blank=True, verbose_name="真实姓名")
     id_card = models.CharField(max_length=18, null=True, blank=True, verbose_name="身份证号")
     is_verified = models.BooleanField(default=False, verbose_name="已实名")
+    
+    VERIFY_STATUS_CHOICES =(
+        (0,'未提交'),
+        (1,'审核中'),
+        (2,'已认证'),
+        (3,'认证失败'),
+    )
+    
+    verify_status = models.SmallIntegerField(choices=VERIFY_STATUS_CHOICES, default=0, verbose_name="实名认证状态")
     
     # 信用分
     credit_score = models.IntegerField(default=100, verbose_name="信用分")

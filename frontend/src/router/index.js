@@ -31,7 +31,14 @@ const routes = [
     path: '/my-products',
     name: 'MyProducts',
     component: () => import('@/views/user/MyProducts.vue'),
-  }
+  },
+  // 个人中心
+  {
+    path: '/profile',
+    name: 'Profile',
+    component: () => import('@/views/user/Profile.vue'),
+    meta: { requireAuth: true } // 只有登录才能访问,
+  },
 ]
 
 const router = createRouter({

@@ -45,7 +45,7 @@
               </span>
               <template #dropdown>
                 <el-dropdown-menu>
-                  <el-dropdown-item>个人中心</el-dropdown-item>
+                  <el-dropdown-item @click="$router.push('/profile')">个人中心</el-dropdown-item>
                   <el-dropdown-item @click="$router.push('/my-products')">我的发布</el-dropdown-item>
                   <el-dropdown-item divided @click="handleLogout">退出登录</el-dropdown-item>
                 </el-dropdown-menu>
@@ -77,7 +77,6 @@
 </template>
 
 <script setup>
-// 您的 script 部分代码完全不变，这里省略以保持简洁
 import { ref, onMounted, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { Search, Plus, Shop, ArrowDown } from '@element-plus/icons-vue'

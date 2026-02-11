@@ -1,6 +1,7 @@
 from .models import Address
 from rest_framework import serializers
 from django.contrib.auth import get_user_model
+from goods.models import Product, Category
 
 User = get_user_model()
 
@@ -41,3 +42,12 @@ class RegisterSerializer(serializers.ModelSerializer):
         # 使用 create_user 方法，它会自动对密码进行加密哈希
         user = User.objects.create_user(**validated_data)
         return user
+
+class ProductDetailSerializer(serializers.ModelSerializer):
+    # 嵌套显示卖家的详细信息
+    owner = UserInfoSerializer(read_only=True)
+    category_name = serializers.ReadOnlyField(source='category.name')
+
+    class Meta:
+        model = Product
+        fields = '__all__'

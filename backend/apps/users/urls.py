@@ -3,7 +3,7 @@ from rest_framework_simplejwt.views import (
     TokenObtainPairView, # 登录获取 Token
     TokenRefreshView,    # 刷新 Token
 )
-from .views import RegisterView, UserProfileView, AddressViewSet
+from .views import RealNameVerifyView, RegisterView, UserProfileView, AddressViewSet
 
 urlpatterns = [
     # 注册接口
@@ -21,9 +21,12 @@ urlpatterns = [
     # 收货地址
     path('addresses/', AddressViewSet.as_view({'get': 'list', 'post': 'create'}), 
          name='address_list_create'),
-    # 
+    # 收货地址详情、更新、删除
     path('addresses/<int:pk>/', AddressViewSet.as_view({'get': 'retrieve', 
                                                         'put': 'update', 
                                                         'delete': 'destroy'
                                                         }), name='address_detail'),
+    
+    # 实名认证
+    path('verufy/', RealNameVerifyView.as_view(), name='real_name_verify'),
 ]
