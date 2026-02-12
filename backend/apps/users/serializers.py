@@ -1,4 +1,4 @@
-from .models import Address
+from .models import Address, Report
 from rest_framework import serializers
 from django.contrib.auth import get_user_model
 from goods.models import Product, Category
@@ -43,11 +43,17 @@ class RegisterSerializer(serializers.ModelSerializer):
         user = User.objects.create_user(**validated_data)
         return user
 
-class ProductDetailSerializer(serializers.ModelSerializer):
-    # 嵌套显示卖家的详细信息
-    owner = UserInfoSerializer(read_only=True)
-    category_name = serializers.ReadOnlyField(source='category.name')
+# class ProductDetailSerializer(serializers.ModelSerializer):
+#     # 嵌套显示卖家的详细信息
+#     owner = UserInfoSerializer(read_only=True)
+#     category_name = serializers.ReadOnlyField(source='category.name')
 
+#     class Meta:
+#         model = Product
+#         fields = '__all__'
+
+class ReportSerializer(serializers.ModelSerializer):
     class Meta:
-        model = Product
+        model = Report
         fields = '__all__'
+        read_only_fields = ['reporter', 'status']

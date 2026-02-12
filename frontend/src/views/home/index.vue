@@ -11,7 +11,7 @@
       <el-main>
         <el-row :gutter="20">
           <el-col :span="6" v-for="item in productList" :key="item.id">
-            <el-card class="product-card" :body-style="{ padding: '0px' }">
+            <el-card class="product-card" @click="$router.push(`/goods/${item.id}`)">
               <!-- 这里处理图片 URL，如果后端传的是相对路径，需要拼上基准地址 -->
               <img :src="item.images[0] ? 'http://127.0.0.1:8000' + item.images[0] : 'https://via.placeholder.com/150'" class="image" />
               <div style="padding: 14px">
@@ -63,7 +63,6 @@ const fetchProducts = async () => {
 }
 
 const loadProducts = async () => {
-  // 💡 优化：只发送有值的参数
   const params = {}
   if (route.query.q) params.search = route.query.q
   if (route.query.cat) params.category = route.query.cat
@@ -93,7 +92,6 @@ watch(
 
 onMounted(() => {
   loadProducts()
-  // 别忘了加载分类（如果有分类筛选的话）
 })
 </script>
 

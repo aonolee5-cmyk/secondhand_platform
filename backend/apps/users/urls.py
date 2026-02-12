@@ -1,9 +1,9 @@
 from django.urls import path
 from rest_framework_simplejwt.views import (
-    TokenObtainPairView, # 登录获取 Token
-    TokenRefreshView,    # 刷新 Token
+    TokenObtainPairView,
+    TokenRefreshView,    
 )
-from .views import RealNameVerifyView, RegisterView, UserProfileView, AddressViewSet
+from .views import RealNameVerifyView, RegisterView, UserProfileView, AddressViewSet, ReportViewSet
 
 urlpatterns = [
     # 注册接口
@@ -28,5 +28,7 @@ urlpatterns = [
                                                         }), name='address_detail'),
     
     # 实名认证
-    path('verufy/', RealNameVerifyView.as_view(), name='real_name_verify'),
+    path('verify/', RealNameVerifyView.as_view(), name='real_name_verify'),
+    # 举报
+    path('reports/', ReportViewSet.as_view({'post': 'create'}), name='report_create'),
 ]

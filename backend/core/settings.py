@@ -65,7 +65,7 @@ INSTALLED_APPS = [
     'rest_framework',
     'corsheaders',  # 跨域处理
     
-    # 自己的应用 (因为加了 sys.path，直接写应用名即可)
+    
     'users.apps.UsersConfig',
     'goods.apps.GoodsConfig',
     'trade.apps.TradeConfig',

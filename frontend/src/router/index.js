@@ -39,6 +39,19 @@ const routes = [
     component: () => import('@/views/user/Profile.vue'),
     meta: { requireAuth: true } // 只有登录才能访问,
   },
+  // 商品详情页面
+  {
+    path: '/goods/:id',
+    name: 'ProductDetail',
+    component: () => import('@/views/goods/Detail.vue'),
+  },
+  // 修改商品页面
+  {
+    path: '/edit/:id',
+    name: 'EditProduct',
+    component: () => import('@/views/goods/Post.vue'),
+    meta: { requireAuth: true } // 只有登录才能访问,
+  },
 ]
 
 const router = createRouter({

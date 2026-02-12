@@ -2,12 +2,12 @@ from django.views.decorators.csrf import csrf_exempt
 from django.utils.decorators import method_decorator
 from rest_framework import generics
 from rest_framework.permissions import AllowAny
-from .serializers import RegisterSerializer
+from .serializers import RegisterSerializer, ReportSerializer
 from django.contrib.auth import get_user_model
 from rest_framework import viewsets, permissions
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from .models import Address
+from .models import Address, Report
 from .serializers import UserProfileSerializer, AddressSerializer
 from rest_framework.decorators import action
 from rest_framework import status
@@ -66,7 +66,6 @@ class AddressViewSet(viewsets.ModelViewSet):
             Address.objects.filter(user=self.request.user).update(is_default=False)
         serializer.save(user=self.request.user)
         
-
 class RealNameVerifyView(APIView):
     permission_classes = [permissions.IsAuthenticated]
     
@@ -89,3 +88,13 @@ class RealNameVerifyView(APIView):
         user.save()
         
         return Response({'detail': '实名信息已提交，请等待管理员审核'})
+    
+class ReportViewSet(viewsets.ModelViewSet):
+    ''' 举报视图 '''
+    queryset = Report.objects.all()
+    serializer_class = ReportSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def perform_create(self, serializer):
+        # 自动关联举报人
+        serializer.save(reporter=self.request.user)

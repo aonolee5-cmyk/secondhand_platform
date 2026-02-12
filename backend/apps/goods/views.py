@@ -9,7 +9,7 @@ from .utils import DFAFilter
 from .models import SensitiveWord
 from rest_framework import filters
 from django_filters.rest_framework import DjangoFilterBackend
-from rest_framework.permissions import IsAuthenticatedOrReadOnly
+from rest_framework.permissions import IsAuthenticatedOrReadOnly, AllowAny, IsAuthenticated
 from rest_framework import permissions
 from django.db.models import Q
 from django.core.files.storage import default_storage
@@ -53,8 +53,19 @@ class ProductViewSet(viewsets.ModelViewSet):
             qs = qs.filter(category_id=cat_id)
 
         return qs.order_by('-create_time')
+    def get_serializer_class(self):
+        '''如果是列表视图，使用简化的序列化器；如果是详情视图，使用完整的序列化器'''
+        return ProductSerializer
+    
+    def get_permissions(self):
+        """
+        动态设置权限，
+        """
+        if self.action in ['update', 'partial_update', 'destroy', 'change_status']:
+            return [IsAuthenticated()]
+        return [AllowAny()]
 
-    # 💡 动作1：上传图片
+        # 💡 动作1：上传图片
     @action(detail=False, methods=['post'])
     def upload_image(self, request):
         file_obj = request.FILES.get('file')

@@ -1,15 +1,12 @@
 <template>
   <div class="app-wrapper">
-    <!-- 全局头部导航 -->
     <el-header class="main-header">
       <div class="header-content">
-        <!-- 优化点1: Logo区域增加交互效果 -->
         <div class="logo" @click="$router.push('/')" title="返回首页">
           <el-icon color="#409EFF" :size="32"><Shop /></el-icon>
           <span class="logo-text">二手交易平台</span>
         </div>
 
-        <!-- 优化点2: 搜索框样式优化 -->
         <div class="search-bar">
           <el-input 
             v-model="searchQuery" 
@@ -19,24 +16,19 @@
             @keyup.enter="handleSearch"
             size="large"
           />
-          <!-- 优化点3: 将搜索按钮集成到输入框内 -->
           <el-button type="primary" :icon="Search" @click="handleSearch" class="search-btn">搜索</el-button>
         </div>
 
         <div class="nav-actions">
-          <!-- 优化点4: 发布按钮更突出 -->
           <el-button type="primary" :icon="Plus" @click="goToPost" size="large" round>发布宝贝</el-button>
           
           <el-divider direction="vertical" />
-
-          <!-- 优化点5: 登录/注册按钮视觉优化 -->
           <div v-if="!isLogin" class="auth-btns">
             <el-button text bg @click="$router.push('/login')">登录</el-button>
             <el-button text bg @click="$router.push('/register')">注册</el-button>
           </div>
 
           <div v-else class="user-profile">
-            <!-- 优化点6: 用户头像下拉菜单交互优化 -->
             <el-dropdown trigger="click">
               <span class="el-dropdown-link user-avatar-container">
                 <el-avatar :size="40" src="https://cube.elemecdn.com/0/88/03b0d39583f48206768a7534e55bcpng.png" />
@@ -58,7 +50,6 @@
 
     <!-- 页面内容出口 -->
     <el-main class="main-body">
-      <!-- 优化点7: 内容区域增加过渡效果 -->
       <router-view v-slot="{ Component }">
         <transition name="fade-transform" mode="out-in">
           <component :is="Component" />
@@ -66,9 +57,8 @@
       </router-view>
     </el-main>
 
-    <!-- 优化点8: 增加全局页脚 -->
     <el-footer class="main-footer">
-      <p>&copy; 2024 二手交易平台. All Rights Reserved.</p>
+      <p>&copy; 二手交易平台. All Rights Reserved.</p>
       <p>
         <a href="#">关于我们</a> | <a href="#">联系我们</a> | <a href="#">服务条款</a>
       </p>
@@ -89,12 +79,18 @@ const isLogin = ref(false)
 
 const checkLogin = () => {
   const token = localStorage.getItem('token')
-  isLogin.value = !!token
+  if(isLogin.value!==!!token){
+    isLogin.value = !!token
+  }
 }
+
+onMounted(() => {
+  checkLogin()
+})
 
 watch(() => route.path, () => {
   checkLogin()
-})
+},{immediate: true})
 
 const goToPost = () => {
   if (!isLogin.value) {
@@ -107,14 +103,19 @@ const goToPost = () => {
 
 const handleLogout = () => {
   localStorage.removeItem('token')
+  localStorage.removeItem('refresh_token')
   isLogin.value = false
   ElMessage.success('已安全退出')
-  router.push('/')
+  if(route.meta.requireAuth){
+    router.push('/')
+  }
 }
 
 const handleSearch = () => {
-  if (!searchQuery.value) return
-  router.push({ path: '/', query: { q: searchQuery.value} })
+  const q=searchQuery.value.trim()
+  if (!q) return
+  if(route.query.q===q)return
+  router.push({ path: '/', query: {q:q} })
 }
 </script>
 

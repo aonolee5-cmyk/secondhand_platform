@@ -334,7 +334,6 @@ const loadProfile = async () => {
     profile.value = res
   } catch (error) {
     console.error(error)
-
   }
 }
 

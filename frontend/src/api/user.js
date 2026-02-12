@@ -51,10 +51,20 @@ export function setDefaultAddress(id){
     method: 'post'
   })
 }
+
 // 用户实名验证提交
 export function submitVerify(data) {
   return request({
     url: '/users/verify/',
+    method: 'post',
+    data
+  })
+}
+
+// 用户举报提交
+export function submitReport(data){
+  return request({
+    url: '/users/reports/',
     method: 'post',
     data
   })
