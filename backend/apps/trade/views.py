@@ -1,29 +1,36 @@
-from django.shortcuts import render
-import time, random
-from django.db import transaction
-from rest_framework import viewsets, status
+import time
+import random
+from django.db import transaction, models
+from django.db.models import F, Q
+from rest_framework import viewsets, status, permissions
 from rest_framework.decorators import action
 from rest_framework.response import Response
+from rest_framework.permissions import IsAuthenticated
+
+# 引入本地模型和序列化器
 from .models import CartItem, Order, Review
-from .serializers import CartSerializer, OrderSerializer
+from .serializers import CartSerializer, OrderSerializer, ReviewSerializer
 from goods.models import Product
-from django.db.models import F
 
 class OrderViewSet(viewsets.ModelViewSet):
     queryset = Order.objects.all()
     serializer_class = OrderSerializer
+    permission_classes = [IsAuthenticated] # 【修正2】显式增加权限控制
 
     def get_queryset(self):
         # 用户只能看到自己买的或卖的订单
         user = self.request.user
-        return Order.objects.filter(models.Q(buyer=user) | models.Q(seller=user)).order_by('-create_time')
-
-    @transaction.atomic # 开启事务
+        return Order.objects.filter(Q(buyer=user) | Q(seller=user)).order_by('-create_time')
+    
+    @transaction.atomic 
     def create(self, request, *args, **kwargs):
         """下单核心逻辑"""
         user = request.user
         product_id = request.data.get('product_id')
         address_info = request.data.get('address') # 前端传来的完整地址对象
+
+        if not product_id or not address_info:
+            return Response({'detail': '商品id和地址信息不能为空'}, status=400)
 
         # 1. 锁定商品（悲观锁），防止并发冲突
         try:
@@ -72,32 +79,54 @@ class OrderViewSet(viewsets.ModelViewSet):
         order.pay_time = time.strftime('%Y-%m-%d %H:%M:%S')
         order.save()
         return Response({'status': '支付成功'})
-    
-    class ReviewViewSet(viewsets.ModelViewSet):
-        queryset = Review.objects.all()
-        serializer_class = ReviewSerializer
-        permission_classes = [IsAuthenticated]
 
-        def perform_create(self, serializer):
-             # 1. 保存评价
-            review = serializer.save()
+    # 【修正3】删除了这里原本错误的 perform_create，因为它属于购物车逻辑，放在订单里是错的
+
+
+class ReviewViewSet(viewsets.ModelViewSet):
+    queryset = Review.objects.all()
+    serializer_class = ReviewSerializer
+    permission_classes = [IsAuthenticated]
+
+    def perform_create(self, serializer):
+        # 1. 保存评价
+        review = serializer.save()
+    
+        # 2. 核心逻辑：更新卖家信用分
+        # 算法：5星+2分，4星+1分，3星不加，2星-5分，1星-10分
+        order = review.order
+        seller = order.seller
+        score_change = 0
         
-            # 2. 核心逻辑：更新卖家信用分
-            # 算法：5星+2分，4星+1分，3星不加，2星-5分，1星-10分
-            order = review.order
-            seller = order.seller
-            score_change = 0
-            
-            s = review.buyer_score
-            if s == 5: score_change = 2
-            elif s == 4: score_change = 1
-            elif s == 2: score_change = -5
-            elif s == 1: score_change = -10
-            
-            if score_change != 0:
-                seller.credit_score = F('credit_score') + score_change
-                seller.save()
-            
-            # 3. 订单状态改为已完成（如果之前没改的话）
-            order.status = 'received'
-            order.save()
+        s = review.buyer_score
+        if s == 5: score_change = 2
+        elif s == 4: score_change = 1
+        elif s == 2: score_change = -5
+        elif s == 1: score_change = -10
+        
+        if score_change != 0:
+            seller.credit_score = F('credit_score') + score_change
+            seller.save()
+            seller.refresh_from_db() # 刷新一下，保证后续逻辑拿到最新值
+        
+        # 3. 订单状态改为已完成（如果之前没改的话）
+        order.status = 'received'
+        order.save()
+
+
+class CartViewSet(viewsets.ModelViewSet):
+    ''' 购物车视图集 '''
+    serializer_class = CartSerializer
+    permission_classes = [IsAuthenticated]
+    
+    def get_queryset(self):
+        # 只返回当前登录用户的购物车数据
+        return CartItem.objects.filter(user=self.request.user)
+
+    def perform_create(self, serializer):
+        # 防止重复添加同一个商品
+        product = serializer.validated_data['product']
+        if CartItem.objects.filter(user=self.request.user, product=product).exists():
+            # 这里需要 rest_framework.serializers 才能抛出异常
+            raise serializers.ValidationError("该商品已在购物车中")
+        serializer.save(user=self.request.user)

@@ -29,6 +29,16 @@
           </div>
 
           <div v-else class="user-profile">
+            <el-tooltip content="我的购物车" placement="bottom">
+              <el-button
+                circle
+                text
+                size="large"
+                :icon="ShoppingCart"
+                style="font-size:20px; margin-right:8px;"
+                @click="$router.push('/cart')"
+              />
+            </el-tooltip>
             <el-dropdown trigger="click">
               <span class="el-dropdown-link user-avatar-container">
                 <el-avatar :size="40" src="https://cube.elemecdn.com/0/88/03b0d39583f48206768a7534e55bcpng.png" />
@@ -39,6 +49,7 @@
                 <el-dropdown-menu>
                   <el-dropdown-item @click="$router.push('/profile')">个人中心</el-dropdown-item>
                   <el-dropdown-item @click="$router.push('/my-products')">我的发布</el-dropdown-item>
+                  <el-dropdown-item @click="$router.push('/orders')"divided>我的订单</el-dropdown-item> 
                   <el-dropdown-item divided @click="handleLogout">退出登录</el-dropdown-item>
                 </el-dropdown-menu>
               </template>
@@ -69,8 +80,9 @@
 <script setup>
 import { ref, onMounted, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { Search, Plus, Shop, ArrowDown } from '@element-plus/icons-vue'
+import { Search, Plus, Shop, ArrowDown, ShoppingCart} from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
+import { el } from 'element-plus/es/locale/index.mjs'
 
 const router = useRouter()
 const route = useRoute()
@@ -223,6 +235,9 @@ body {
       }
 
       .user-profile {
+        display: flex;
+        align-items: center;
+        
         .user-avatar-container {
           display: flex;
           align-items: center;

@@ -1,3 +1,4 @@
+# from backend.apps.trade.serializers import OrderSerializer
 from rest_framework import viewsets, status
 from rest_framework.response import Response
 from rest_framework.decorators import action
@@ -19,14 +20,17 @@ class CategoryViewSet(viewsets.ReadOnlyModelViewSet):
     serializer_class = CategorySerializer
 
 class ProductViewSet(viewsets.ModelViewSet):
-    queryset = Product.objects.all()
+    queryset = Product.objects.filter(status='onsale')
     serializer_class = ProductSerializer
-    # 💡 权限：游客只读，登录可操作
+    # 权限：游客只读，登录可操作
     permission_classes = [permissions.IsAuthenticatedOrReadOnly]
+    filter_backends = [filters.SearchFilter, DjangoFilterBackend]
+    search_fields = ['title', 'desc']
+    filterset_fields = ['category']
 
     def get_queryset(self):
         """
-        自定义商品列表查询集，支持“我的商品”与“大厅商品”切换，
+        商品列表查询集
         """
         user = self.request.user
         action_name = self.action
@@ -53,19 +57,8 @@ class ProductViewSet(viewsets.ModelViewSet):
             qs = qs.filter(category_id=cat_id)
 
         return qs.order_by('-create_time')
-    def get_serializer_class(self):
-        '''如果是列表视图，使用简化的序列化器；如果是详情视图，使用完整的序列化器'''
-        return ProductSerializer
-    
-    def get_permissions(self):
-        """
-        动态设置权限，
-        """
-        if self.action in ['update', 'partial_update', 'destroy', 'change_status']:
-            return [IsAuthenticated()]
-        return [AllowAny()]
 
-        # 💡 动作1：上传图片
+        # 动作1：上传图片
     @action(detail=False, methods=['post'])
     def upload_image(self, request):
         file_obj = request.FILES.get('file')
@@ -74,7 +67,7 @@ class ProductViewSet(viewsets.ModelViewSet):
         path = default_storage.save(f'products/{file_obj.name}', file_obj)
         return Response({'url': f'/media/{path}'})
 
-    # 💡 动作2：下架/上架切换
+    # 动作2：下架/上架切换
     @action(detail=True, methods=['post'])
     def change_status(self, request, pk=None):
         product = self.get_object()
@@ -95,7 +88,6 @@ class ProductViewSet(viewsets.ModelViewSet):
             raise ValidationError({'detail': '内容包含违禁词，请重新编辑后再发布！'})
         
         serializer.save(owner=self.request.user)
-
 # --- 工具函数保持在类外面 ---
 def check_sensitive_words(content):
     dfa = DFAFilter()

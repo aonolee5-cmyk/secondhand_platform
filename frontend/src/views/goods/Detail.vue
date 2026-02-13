@@ -128,6 +128,9 @@ import {
   Warning 
 } from '@element-plus/icons-vue'
 
+import {createOrder} from "@/api/trade";
+
+
 const route = useRoute()
 const router = useRouter()
 const product = ref({})
@@ -139,7 +142,7 @@ const reportDialog = ref({
   product: null
 })
 
-// --- 信用展示逻辑 (基于功能结构图) ---
+// 信用展示逻辑
 const creditLevel = computed(() => {
   const score = product.value.owner_credit || 100
   if (score >= 90) return { text: '信用极好', color: '#67C23A' }
@@ -148,13 +151,13 @@ const creditLevel = computed(() => {
   return { text: '信用极差', color: '#F56C6C' }
 })
 
-// --- 收藏逻辑 ---
+// 收藏逻辑
 const handleFavorite = () => {
   isFavorite.value = !isFavorite.value
   ElMessage.success(isFavorite.value ? '已加入收藏夹' : '已取消收藏')
 }
 
-// --- 举报逻辑 ---
+// 举报逻辑
 const reportVisible = ref(false)
 const reportLoading = ref(false)
 const reportForm = reactive({
@@ -193,15 +196,53 @@ const handleReportSubmit = async () => {
   }
 }
 
-// --- 立即购买 (跳转交易模块) ---
-const handleBuy = () => {
-  if (!localStorage.getItem('token')) {
-    ElMessage.warning('请先登录后再进行交易')
+// 立即购买
+const handleBuy = async () => {
+  const token = localStorage.getItem('token')
+  if (!token) {
+    ElMessage.warning('请先登录再进行购买')
     router.push('/login')
     return
   }
-  // 这里跳转到确认订单页
-  ElMessage.info('正在进入安全交易环境...')
+   try {
+    await ElMessageBox.confirm(
+      `商品价格：￥${product.value.price}，确定要下单吗？`,
+      '交易确认',
+      {
+        confirmButtonText: '确认支付',
+        cancelButtonText: '取消',
+        type: 'warning',
+      }
+    )
+
+    // 3. 调用后端下单 API
+    // 注意：后端 createOrder 需要 product_id 和 address
+    // 这里为了演示流程，我们先模拟一个默认地址对象
+    // (完善版本应该弹窗让用户选择收货地址)
+    const orderData = {
+      product_id: product.value.id,
+      address: {
+        receiver: '当前用户', 
+        mobile: '13800000000', 
+        region: '线上交易', 
+        detail: '无需配送' 
+      }
+    }
+
+    await createOrder(orderData)
+    
+    // 4. 成功反馈
+    ElMessage.success('下单成功！')
+    
+    // 5. 跳转到订单列表页去支付
+    router.push('/orders')
+
+  } catch (err) {
+    // 捕获“取消”操作或后端报错
+    if (err !== 'cancel') {
+      console.error(err)
+    }
+  }
 }
 
 onMounted(async () => {

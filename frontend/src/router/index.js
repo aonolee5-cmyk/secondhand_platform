@@ -52,6 +52,20 @@ const routes = [
     component: () => import('@/views/goods/Post.vue'),
     meta: { requireAuth: true } // 只有登录才能访问,
   },
+  // 订单页面
+  {
+    path:'/orders',
+    name:'Orders',
+    component: () => import('@/views/trade/Orders.vue'),
+    meta: { requireAuth: true } // 只有登录才能访问,
+  },
+  // 购物车页面
+  {
+    path:'/cart',
+    name:'Cart',
+    component: () => import('@/views/trade/Cart.vue'),
+    meta: { requireAuth: true } // 只有登录才能访问,
+  }
 ]
 
 const router = createRouter({
