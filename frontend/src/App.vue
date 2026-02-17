@@ -29,6 +29,10 @@
           </div>
 
           <div v-else class="user-profile">
+            <el-badge :value="unreadTotal" :hidden="unreadTotal === 0" class="msg-badge">
+              <el-button circle :icon="ChatLineRound" @click="$router.push('/chat-list')" />
+            </el-badge>
+
             <el-tooltip content="我的购物车" placement="bottom">
               <el-button
                 circle
@@ -80,29 +84,49 @@
 <script setup>
 import { ref, onMounted, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { Search, Plus, Shop, ArrowDown, ShoppingCart} from '@element-plus/icons-vue'
+import { Search, Plus, Shop, ArrowDown, ShoppingCart, ChatLineRound } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
-import { el } from 'element-plus/es/locale/index.mjs'
+// 【修正点 1】必须引入 request，否则 checkUnread 里的请求会报错
+import request from '@/utils/request'
 
 const router = useRouter()
 const route = useRoute()
 const searchQuery = ref('')
 const isLogin = ref(false)
+const unreadTotal = ref(0)
+
+// 【修正点 2】修正了原有的拼写错误 checck -> check
+const checkUnread = async () => {
+  if (localStorage.getItem('token')) {
+    try {
+      const res = await request({ url: 'chat/history/list_recent_contacts/', method: 'get' })
+      // 根据后端返回结构赋值
+      unreadTotal.value = res.unread_total || 0
+    } catch (err) {
+      console.error('获取未读消息失败', err)
+    }
+  }
+}
 
 const checkLogin = () => {
   const token = localStorage.getItem('token')
-  if(isLogin.value!==!!token){
+  if (isLogin.value !== !!token) {
     isLogin.value = !!token
   }
 }
 
+// 【优化】统一将逻辑放在一个 onMounted 钩子中，确保顺序
 onMounted(() => {
   checkLogin()
+  checkUnread()
+  setInterval(checkUnread, 10000) // 每10秒检查一次未读消息
 })
 
 watch(() => route.path, () => {
   checkLogin()
-},{immediate: true})
+  // 切换页面时也顺便查一下未读消息
+  if (isLogin.value) checkUnread()
+}, { immediate: true })
 
 const goToPost = () => {
   if (!isLogin.value) {
@@ -117,17 +141,18 @@ const handleLogout = () => {
   localStorage.removeItem('token')
   localStorage.removeItem('refresh_token')
   isLogin.value = false
+  unreadTotal.value = 0 // 退出时清空未读数
   ElMessage.success('已安全退出')
-  if(route.meta.requireAuth){
+  if (route.meta.requireAuth) {
     router.push('/')
   }
 }
 
 const handleSearch = () => {
-  const q=searchQuery.value.trim()
+  const q = searchQuery.value.trim()
   if (!q) return
-  if(route.query.q===q)return
-  router.push({ path: '/', query: {q:q} })
+  if (route.query.q === q) return
+  router.push({ path: '/', query: { q: q } })
 }
 </script>
 

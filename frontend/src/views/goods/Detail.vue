@@ -56,7 +56,7 @@
 
           <!-- 核心交易按钮 -->
           <div class="actions">
-            <el-button type="warning" size="large" icon="ChatDotRound" class="action-btn">向卖家咨询</el-button>
+            <el-button type="warning" size="large" icon="ChatDotRound" class="action-btn" @click="handleChat">向卖家咨询</el-button>
             <el-button type="danger" size="large" icon="ShoppingCart" class="action-btn" @click="handleBuy">立即购买</el-button>
             <el-button 
               :type="isFavorite ? 'danger' : 'info'" 
@@ -101,7 +101,7 @@
             v-model="reportForm.content" 
             type="textarea" 
             rows="4" 
-            placeholder="请详细描述违规情况，上传截图证明可加快处理速度（模拟）..." 
+            placeholder="请详细描述违规情况" 
           />
         </el-form-item>
       </el-form>
@@ -141,6 +141,22 @@ const reportDialog = ref({
   target_user: null,
   product: null
 })
+
+// 咨询卖家逻辑
+const handleChat = () => {
+  console.log('咨询卖家')
+  if (!localStorage.getItem('token')) {
+    ElMessage.warning('请先登录再进行咨询')
+    router.push('/login')
+    return
+  }
+// 跳转到聊天页面
+  router.push({
+    name: 'Chat',
+    params: { targetId: product.value.owner },
+    query: { name: product.value.owner_name }
+  })
+}
 
 // 信用展示逻辑
 const creditLevel = computed(() => {

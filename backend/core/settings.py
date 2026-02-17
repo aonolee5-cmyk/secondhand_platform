@@ -53,6 +53,7 @@ SIMPLE_JWT = {
 # Application definition
 
 INSTALLED_APPS = [
+    'daphne',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -60,6 +61,7 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'django_filters',
+    'channels',
     
     # 第三方库
     'rest_framework',
@@ -71,6 +73,18 @@ INSTALLED_APPS = [
     'trade.apps.TradeConfig',
     'chat.apps.ChatConfig',
 ]
+# 配置 ASGI 应用
+ASGI_APPLICATION = 'core.asgi.application'
+
+# 配置 Channels 使用 Redis 作为消息中间件
+CHANNEL_LAYERS = {
+    "default": {
+        "BACKEND": "channels_redis.core.RedisChannelLayer",
+        "CONFIG": {
+            "hosts": [("127.0.0.1", 6379)],
+        },
+    }
+}
 
 MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',  # 跨域处理中间件

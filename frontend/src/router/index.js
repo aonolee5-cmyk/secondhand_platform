@@ -65,7 +65,21 @@ const routes = [
     name:'Cart',
     component: () => import('@/views/trade/Cart.vue'),
     meta: { requireAuth: true } // 只有登录才能访问,
-  }
+  },
+  // 聊天页面
+  {
+    path:'/chat/:targetId',
+    name:'Chat',
+    component: () => import('@/views/chat/Chat.vue'),
+    meta: { requireAuth: true } // 只有登录才能访问,
+  },
+  // 聊天列表页面
+  {
+    path:'/chat-list',
+    name:'ChatList',
+    component: () => import('@/views/chat/List.vue'),
+    meta: { requireAuth: true } // 只有登录才能访问,
+  },
 ]
 
 const router = createRouter({

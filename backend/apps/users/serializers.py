@@ -53,7 +53,15 @@ class RegisterSerializer(serializers.ModelSerializer):
 #         fields = '__all__'
 
 class ReportSerializer(serializers.ModelSerializer):
+    ''' 举报序列化器 '''
     class Meta:
         model = Report
         fields = '__all__'
         read_only_fields = ['reporter', 'status']
+
+class UserSerializer(serializers.ModelSerializer):
+    ''' 用于在聊天中展示用户基本信息 '''
+    class Meta:
+        model = User
+        fields = ['id', 'username', 'nickname', 'mobile', 'avatar']
+        read_only_fields = ['username', 'credit_score', 'is_verified']
