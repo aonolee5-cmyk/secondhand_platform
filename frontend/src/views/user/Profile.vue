@@ -1,11 +1,10 @@
 <template>
   <div class="profile-container">
     <el-row :gutter="25">
-      <!-- 左侧：用户卡片 (展示核心状态) -->
+      <!-- 左侧：用户卡片  -->
       <el-col :span="8">
         <el-card class="user-info-card" shadow="hover">
           <div class="user-avatar-box">
-            <!-- 【修改点：包装了 el-upload 并在外层增加了 hover 效果】 -->
             <el-upload
               class="avatar-uploader"
               action=""
@@ -40,7 +39,7 @@
 
           <el-divider />
 
-          <!-- 信用展示 (结构图重点) -->
+          <!-- 信用展示-->
           <div class="credit-section">
             <div class="credit-header">
               <span>平台信用评分</span>
@@ -146,15 +145,15 @@
               <el-table-column prop="receiver" label="收货人" width="120" />
               <el-table-column prop="mobile" label="手机号" width="130" />
               <el-table-column label="收货地址">
-                <template slot-scope="scope">
+                <template #default="scope">
                   {{ scope.row.region }} {{scope.row.detail}}
-                  <el-tag v-if="SCOPE.row.is_default" size="small" type="danger" style="margin-left: 10px;">默认</el-tag>
+                  <el-tag v-if="scope.row.is_default" size="small" type="danger" style="margin-left: 10px;">默认</el-tag>
                 </template>
               </el-table-column>
             <el-table-column label="操作" width="200">
                 <template #default="scope">
-                  <el-button like type="primary" v-if="!scope.row.is_default" @click="handleSetDefault(scope.row.id)">设为默认</el-button>
-                  <el-button like type="danger" @click="handleDeleteAddress(scope.row.id)">删除</el-button>
+                  <el-button link type="primary" v-if="!scope.row.is_default" @click="handleSetDefault(scope.row.id)">设为默认</el-button>
+                  <el-button link type="danger" @click="handleDeleteAddress(scope.row.id)">删除</el-button>
                 </template>
               </el-table-column>
             </el-table>
@@ -179,7 +178,7 @@
                   <el-input v-model="addressForm.detail" placeholder="请输入详细地址信息" />
                 </el-form-item>
                 <el-form-item label="默认地址">
-                  <el-switch v-model="addressForm.isDefault" />
+                  <el-switch v-model="addressForm.is_default" />
                 </el-form-item>
               </el-form>
               <template #footer>
@@ -205,7 +204,7 @@ import {
   User, Postcard, Location, QuestionFilled, 
   CircleCheck, Warning, Camera
 } from '@element-plus/icons-vue'
-import { el } from 'element-plus/es/locale/index.mjs'
+// import { el } from 'element-plus/es/locale/index.mjs'
 import {Plus} from '@element-plus/icons-vue'
 
 
@@ -311,7 +310,6 @@ const beforeAvatarUpload = (rawFile) => {
 
 const handleAvatarUpload = async (options) => { 
   const formData = new FormData()
-  // 注意：'avatar' 必须匹配后端 User 模型中的字段名
   formData.append('avatar', options.file)
   try {
     await updateAvatar(formData)
@@ -373,7 +371,6 @@ const handleSetDefault = async (id) => {
 <style scoped lang="scss">
 .profile-container { padding: 40px; max-width: 1100px; margin: 0 auto; }
 
-/* 头像上传样式增强 */
 .user-avatar-box {
   .avatar-uploader {
     cursor: pointer;

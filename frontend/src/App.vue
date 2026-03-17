@@ -86,7 +86,6 @@ import { ref, onMounted, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { Search, Plus, Shop, ArrowDown, ShoppingCart, ChatLineRound } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
-// 【修正点 1】必须引入 request，否则 checkUnread 里的请求会报错
 import request from '@/utils/request'
 
 const router = useRouter()
@@ -95,12 +94,11 @@ const searchQuery = ref('')
 const isLogin = ref(false)
 const unreadTotal = ref(0)
 
-// 【修正点 2】修正了原有的拼写错误 checck -> check
+
 const checkUnread = async () => {
   if (localStorage.getItem('token')) {
     try {
       const res = await request({ url: 'chat/history/list_recent_contacts/', method: 'get' })
-      // 根据后端返回结构赋值
       unreadTotal.value = res.unread_total || 0
     } catch (err) {
       console.error('获取未读消息失败', err)
@@ -115,7 +113,7 @@ const checkLogin = () => {
   }
 }
 
-// 【优化】统一将逻辑放在一个 onMounted 钩子中，确保顺序
+
 onMounted(() => {
   checkLogin()
   checkUnread()
@@ -124,7 +122,6 @@ onMounted(() => {
 
 watch(() => route.path, () => {
   checkLogin()
-  // 切换页面时也顺便查一下未读消息
   if (isLogin.value) checkUnread()
 }, { immediate: true })
 
@@ -141,7 +138,7 @@ const handleLogout = () => {
   localStorage.removeItem('token')
   localStorage.removeItem('refresh_token')
   isLogin.value = false
-  unreadTotal.value = 0 // 退出时清空未读数
+  unreadTotal.value = 0  
   ElMessage.success('已安全退出')
   if (route.meta.requireAuth) {
     router.push('/')
@@ -157,7 +154,7 @@ const handleSearch = () => {
 </script>
 
 <style lang="scss">
-/* --- 全局样式优化 --- */
+
 body {
   margin: 0;
   font-family: "Helvetica Neue", Helvetica, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "微软雅黑", Arial, sans-serif;
@@ -168,18 +165,14 @@ body {
   flex-direction: column;
   min-height: 100vh;
   
-  /* === 新增渐变背景 === */
-  background: linear-gradient(135deg, #e0c3fc 0%, #8ec5fc 100%); /* 紫色到蓝色的柔和渐变 */
-  /* 备选方案1: 清新绿意 */
-  // background: linear-gradient(to top, #c1dfc4 0%, #deecdd 100%);
-  /* 备选方案2: 温暖日落 */
-  // background: linear-gradient(120deg, #f6d365 0%, #fda085 100%);
+
+  background: linear-gradient(135deg, #e0c3fc 0%, #8ec5fc 100%); 
+
 }
 
 .app-wrapper {
   display: flex;
   flex-direction: column;
-  /* background-color: #f5f7fa; (不再需要这一行了，因为 body 已经有了背景) */
   min-height: 100vh;
 }
 
@@ -190,7 +183,7 @@ body {
   min-height: 100vh;
 }
 
-/* --- Header 头部导航优化 --- */
+
 .main-header {
   background-color: #ffffff;
   border-bottom: 1px solid #e4e7ed;
@@ -199,10 +192,10 @@ body {
   top: 0;
   z-index: 1000;
   height: 64px !important;
-  padding: 0 20px; /* 增加左右内边距 */
+  padding: 0 20px; 
 
   .header-content {
-    max-width: 1280px; /* 适当加宽内容区 */
+    max-width: 1280px; 
     margin: 0 auto;
     height: 100%;
     display: flex;
@@ -223,13 +216,13 @@ body {
         font-size: 22px;
         font-weight: 600;
         color: #303133;
-        white-space: nowrap; /* 防止文字换行 */
+        white-space: nowrap; 
       }
     }
 
     .search-bar {
       display: flex;
-      flex-grow: 1; /* 使其填充更多空间 */
+      flex-grow: 1; 
       max-width: 500px;
       margin: 0 50px;
 
@@ -248,7 +241,7 @@ body {
     .nav-actions {
       display: flex;
       align-items: center;
-      gap: 12px; /* 使用 gap 增加元素间距 */
+      gap: 12px; 
 
       .el-divider--vertical {
         height: 2em;
@@ -286,14 +279,14 @@ body {
   }
 }
 
-/* --- Main 内容区域优化 --- */
+
 .main-body {
-  flex-grow: 1; /* 确保内容区能撑开，将页脚推到底部 */
+  flex-grow: 1; 
   max-width: 1280px;
   width: 100%;
-  margin: 24px auto; /* 增加上下外边距 */
+  margin: 24px auto; 
   padding: 0 20px;
-  box-sizing: border-box; /* 确保 padding 不会撑大宽度 */
+  box-sizing: border-box; 
 }
 
 /* --- 路由切换动画 --- */
@@ -310,7 +303,7 @@ body {
   transform: translateX(30px);
 }
 
-/* --- Footer 页脚样式 --- */
+/* --- 页脚样式 --- */
 .main-footer {
   background-color: #303133;
   color: #a5a7ab;

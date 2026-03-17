@@ -21,8 +21,6 @@
         <template #default="scope">
           <el-button size="small" type="danger" v-if="scope.row.status === 'onsale'" @click="handleStatus(scope.row, 'off')">下架</el-button>
           <el-button size="small" type="success" v-if="scope.row.status === 'off'" @click="handleStatus(scope.row, 'onsale')">重新上架</el-button>
-          
-          <!-- 【修改点 1】：给编辑按钮增加点击跳转逻辑 -->
           <el-button size="small" type="primary" @click="router.push('/edit/' + scope.row.id)">编辑</el-button>
         </template>
       </el-table-column>
@@ -32,15 +30,16 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
-import { useRouter } from 'vue-router' // 【修改点 2】：引入路由
+import { useRouter } from 'vue-router' 
 import { getMyProducts, updateProductStatus } from '@/api/goods'
 import { ElMessage } from 'element-plus'
 
-const router = useRouter() // 【修改点 3】：初始化路由实例
+const router = useRouter() 
 const myProducts = ref([])
 const statusMap = {
   'audit': { text: '审核中', type: 'info' },
   'onsale': { text: '在售中', type: 'success' },
+  'locked': { text: '交易中',type:'warning'},
   'sold': { text: '已售出', type: 'warning' },
   'off': { text: '已下架', type: 'danger' }
 }

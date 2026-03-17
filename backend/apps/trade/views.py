@@ -7,7 +7,6 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 
-# 引入本地模型和序列化器
 from .models import CartItem, Order, Review
 from .serializers import CartSerializer, OrderSerializer, ReviewSerializer
 from goods.models import Product
@@ -15,7 +14,7 @@ from goods.models import Product
 class OrderViewSet(viewsets.ModelViewSet):
     queryset = Order.objects.all()
     serializer_class = OrderSerializer
-    permission_classes = [IsAuthenticated] # 【修正2】显式增加权限控制
+    permission_classes = [IsAuthenticated] 
 
     def get_queryset(self):
         # 用户只能看到自己买的或卖的订单
@@ -27,12 +26,12 @@ class OrderViewSet(viewsets.ModelViewSet):
         """下单核心逻辑"""
         user = request.user
         product_id = request.data.get('product_id')
-        address_info = request.data.get('address') # 前端传来的完整地址对象
+        address_info = request.data.get('address') 
 
         if not product_id or not address_info:
             return Response({'detail': '商品id和地址信息不能为空'}, status=400)
 
-        # 1. 锁定商品（悲观锁），防止并发冲突
+        # 1. 锁定商品，防止并发冲突
         try:
             product = Product.objects.select_for_update().get(id=product_id)
         except Product.DoesNotExist:
@@ -74,13 +73,12 @@ class OrderViewSet(viewsets.ModelViewSet):
         if order.status != 'unpaid':
             return Response({'detail': '订单状态异常'}, status=400)
         
-        # 模拟支付扣款逻辑...
+        # 模拟支付扣款逻辑
         order.status = 'paid'
         order.pay_time = time.strftime('%Y-%m-%d %H:%M:%S')
         order.save()
         return Response({'status': '支付成功'})
 
-    # 【修正3】删除了这里原本错误的 perform_create，因为它属于购物车逻辑，放在订单里是错的
 
 
 class ReviewViewSet(viewsets.ModelViewSet):
@@ -107,9 +105,9 @@ class ReviewViewSet(viewsets.ModelViewSet):
         if score_change != 0:
             seller.credit_score = F('credit_score') + score_change
             seller.save()
-            seller.refresh_from_db() # 刷新一下，保证后续逻辑拿到最新值
+            seller.refresh_from_db() 
         
-        # 3. 订单状态改为已完成（如果之前没改的话）
+        # 3. 订单状态改为已完成
         order.status = 'received'
         order.save()
 
@@ -127,6 +125,5 @@ class CartViewSet(viewsets.ModelViewSet):
         # 防止重复添加同一个商品
         product = serializer.validated_data['product']
         if CartItem.objects.filter(user=self.request.user, product=product).exists():
-            # 这里需要 rest_framework.serializers 才能抛出异常
             raise serializers.ValidationError("该商品已在购物车中")
         serializer.save(user=self.request.user)
