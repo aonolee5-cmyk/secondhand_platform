@@ -168,8 +168,8 @@
                 </el-form-item>
                 <el-form-item label="所在地区">
                   <el-cascader 
-                    v-model="addressForm.region" 
-                    :options="regionOptions" 
+                    v-model="addressForm.regionCode" 
+                    :options="regionData" 
                     placeholder="请选择所在地区"
                     style="width: 100%;"
                   />
@@ -204,9 +204,8 @@ import {
   User, Postcard, Location, QuestionFilled, 
   CircleCheck, Warning, Camera
 } from '@element-plus/icons-vue'
-// import { el } from 'element-plus/es/locale/index.mjs'
 import {Plus} from '@element-plus/icons-vue'
-
+import { regionData, codeToText } from 'element-china-area-data'
 
 const user = ref({
   username: '',
@@ -220,15 +219,17 @@ const user = ref({
   real_name: '', // 实名认证后返回的真实姓名
 })
 
+const regionOptions = regionData
 const addressesList = ref([]) // 用户地址列表
 const addressDialogVisible = ref(false)
 const addressForm = reactive({
   receiver: '',
   mobile: '',
-  region: [],
+  regionCode: [],
   detail: '',
   is_Default: false,
 })
+
 
 const avatarFile = ref(false)
 
@@ -329,7 +330,7 @@ const loadProfile = async () => {
   try {
     const res = await getProfile()
     console.log('后端返回数据：', res)
-    profile.value = res
+    user.value = res
   } catch (error) {
     console.error(error)
   }
@@ -348,8 +349,19 @@ const openAddressDialog = () => {
   addressDialogVisible.value = true
 }
 
+
 const submitAddress = async () => {
-  await addAddress(addressForm)
+  const regionText = addressForm.regionCode.map(code => codeToText[code]).join('')
+
+  const submitData = {
+    receiver: addressForm.receiver,
+    mobile: addressForm.mobile,
+    region: regionText,
+    detail: addressForm.detail,
+    is_default: addressForm.is_default
+  }
+
+  await addAddress(submitData)
   ElMessage.success('地址添加成功')
   addressDialogVisible.value = false
   loadAddresses()

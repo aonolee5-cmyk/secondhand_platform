@@ -60,12 +60,6 @@
           </el-table-column>
         </el-table>
       </el-tab-pane>
-
-
-          <!-- 买家端操作列 -->
-          <!-- <template v-if="scope.row.status === 'dispute'">
-            <el-button size="small" type="primary" @click="applyArbitration(scope.row.id)">申请客服介入</el-button>
-          </template> -->
     </el-tabs>
 
     <!-- 评价弹窗 -->
