@@ -23,6 +23,7 @@ class Order(models.Model):
         ('received', '已收货'),
         ('closed', '已关闭'),
         ('dispute', '异常/纠纷'),
+        ('arbitrating', '客服介入中')
     )
 
     order_sn = models.CharField(max_length=50, unique=True, verbose_name="订单号")
@@ -31,13 +32,14 @@ class Order(models.Model):
     product = models.ForeignKey(Product, on_delete=models.PROTECT, verbose_name="商品")
     
     total_amount = models.DecimalField(max_digits=10, decimal_places=2, verbose_name="订单金额")
-    status = models.CharField(max_length=10, choices=ORDER_STATUS, default='unpaid', verbose_name="订单状态")
+    status = models.CharField(max_length=20, choices=ORDER_STATUS, default='unpaid', verbose_name="订单状态")
     
     # 收货信息快照（防止用户修改地址后影响旧订单）
     receiver_info = models.JSONField(default=dict, verbose_name="收货人信息")
     
     create_time = models.DateTimeField(auto_now_add=True, verbose_name="创建时间")
     pay_time = models.DateTimeField(null=True, blank=True, verbose_name="支付时间")
+    refund_reason= models.CharField(max_length=255,blank=True, null=True, verbose_name="退款原因")
 
     class Meta:
         verbose_name_plural = "订单管理"
@@ -62,4 +64,4 @@ class Review(models.Model):
     create_time = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        verbose_name = "订单评价"
+        verbose_name = "订单评价" 

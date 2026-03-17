@@ -32,3 +32,21 @@ export function receiveOrder(id) {
         method: 'post'
     })
 }
+
+// 申请退款
+export function applyRefund(id,data) {
+  return request({
+    url:`/trade/orders/${id}/apply_refund/`,
+    method: 'post',
+    data
+  })
+}
+
+// 处理退款
+export function handleRefund(id,data) {
+  return request({
+    url:`/trade/orders/${id}/handle_refund/`,
+    method: 'post',
+    data
+  })
+}

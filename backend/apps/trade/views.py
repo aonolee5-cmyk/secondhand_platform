@@ -78,8 +78,59 @@ class OrderViewSet(viewsets.ModelViewSet):
         order.pay_time = time.strftime('%Y-%m-%d %H:%M:%S')
         order.save()
         return Response({'status': '支付成功'})
+    
+    # 退款
+    @action(detail=True, methods=['post'])
+    def apply_refund(self, request, pk=None):
+        """买家申请退款/退货"""
+        order = self.get_object()
+        reason = request.data.get('reason')
+        
+        if order.buyer != request.user:
+            return Response({'detail': '无权操作'}, status=403)
+        if order.status not in['paid', 'shipped']:
+            return Response({'detail': '当前状态无法申请退款'}, status=400)
+            
+        # 状态变更为 异常/纠纷
+        order.status = 'dispute'
+        order.refund_reason = reason
+        order.save()
+        return Response({'status': '已申请退款，等待卖家处理'})
 
+    @action(detail=True, methods=['post'])
+    def handle_refund(self, request, pk=None):
+        """卖家处理退款申请"""
+        order = self.get_object()
+        action_type = request.data.get('action')
+        
+        if order.seller != request.user:
+            return Response({'detail': '无权操作'}, status=403)
+        if order.status != 'dispute':
+            return Response({'detail': '该订单不在退款申请状态'}, status=400)
+            
+        if action_type == 'agree':
+            # 卖家同意：订单关闭，商品回滚为在售状态
+            order.status = 'closed'
+            order.save()
+            
+            product = order.product
+            product.status = 'onsale'
+            product.save()
+            return Response({'status': '已同意退款，金额将原路返回'})
+            
+        elif action_type == 'reject':
+            return Response({'status': '卖家已拒绝,可申请客服介入'})
 
+    
+    @action(detail=True, methods=['post'])
+    def apply_arbitration(self, request, pk=None):
+        """客服介入"""
+        order=self.get_object()
+        if order.status != 'dispute':
+            return Response({'detail': '订单未处于纠纷'}, status=400)
+        order.status = 'arbitrating'
+        order.save()
+        return Response({'status': '已申请客服介入，请等待平台进行处理'})
 
 class ReviewViewSet(viewsets.ModelViewSet):
     queryset = Review.objects.all()
