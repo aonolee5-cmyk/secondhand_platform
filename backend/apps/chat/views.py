@@ -10,14 +10,13 @@ class MessageViewSet(viewsets.ReadOnlyModelViewSet):
     permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):
-        # 前端传 target_user_id，我们算出 room_name
         target_id = self.request.query_params.get('target_id')
         user = self.request.user
         
         if not target_id:
             return Message.objects.none()
 
-        # 房间号逻辑必须与 Consumer 保持一致：小ID_大ID
+
         ids = sorted([user.id, int(target_id)])
         room_name = f"{ids[0]}_{ids[1]}"
         
@@ -33,7 +32,7 @@ class MessageViewSet(viewsets.ReadOnlyModelViewSet):
             Q(sender=user) | Q(receiver=user)
         ).order_by('room_name', '-id').distinct('room_name')
 
-        # 2. 将结果按时间倒序排列（让最新的聊天在最上面）
+        # 2. 将结果按时间倒序排列
         recent_messages = sorted(queryset, key=lambda x: x.timestamp, reverse=True)
         
         # 3. 统计未读总数
@@ -41,8 +40,8 @@ class MessageViewSet(viewsets.ReadOnlyModelViewSet):
         
         serializer = MessageSerializer(recent_messages, many=True)
         
-        # 调试打印：看看后端到底搜出来东西没有
-        print(f"DEBUG: 为用户 {user.username} 查到 {len(recent_messages)} 个联系人")
+        # 打印日志
+        # print(f"DEBUG: 为用户 {user.username} 查到 {len(recent_messages)} 个联系人")
         
         return Response({
             'results': serializer.data,

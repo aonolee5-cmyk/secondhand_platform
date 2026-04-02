@@ -12,7 +12,6 @@
         <el-row :gutter="20">
           <el-col :span="6" v-for="item in productList" :key="item.id">
             <el-card class="product-card" @click="$router.push(`/goods/${item.id}`)">
-              <!-- 这里处理图片 URL，如果后端传的是相对路径，需要拼上基准地址 -->
               <img :src="item.images[0] ? 'http://127.0.0.1:8000' + item.images[0] : 'https://via.placeholder.com/150'" class="image" />
               <div style="padding: 14px">
                 <div class="title">{{ item.title }}</div>
@@ -40,22 +39,20 @@ const route = useRoute()
 const productList = ref([])
 
 onMounted(async () => {
-  // 我们直接调用列表接口获取所有“在售”商品
+  // 调用列表接口获取所有在售商品
   const res = await request({ url: '/goods/products/', method: 'get' })
-  // 注意：因为我们后端逻辑里，发布后默认是 audit (审核中)
-  // 你需要在后台手动把商品的 status 改成 onsale，首页才能看到
+  // 需要在后台手动把商品的状态改成在售，首页才能看到
   productList.value = res.results || res 
 })
 
 // 
 const fetchProducts = async () => {
   const params = {
-    search: route.query.q, // 获取 URL 里的搜索词
+    search: route.query.q, // 获取搜索词
     category: route.query.cat
   }
   try {
     const res = await searchProducts(params)
-    // 这种写法兼容性最强：
     productList.value = Array.isArray(res) ? res : (res.results || [])
   } catch (error) {
     console.error("加载商品失败", error)
@@ -70,7 +67,7 @@ const loadProducts = async () => {
   // 强制指定只看在售的
   params.status = 'onsale'
 
-  console.log('--- 准备请求后端 ---', params)
+  console.log('准备请求后端', params)
   
   try {
     const res = await searchProducts(params)
@@ -87,7 +84,7 @@ watch(
     console.log('路由参数变化了', route.query)
     loadProducts()
   },
-  { deep: true } // 深度监听
+  // { deep: true } 
 )
 
 onMounted(() => {

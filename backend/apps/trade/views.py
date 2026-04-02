@@ -17,13 +17,13 @@ class OrderViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated] 
 
     def get_queryset(self):
-        # 用户只能看到自己买的或卖的订单
+        # 用户只能看到自己的订单
         user = self.request.user
         return Order.objects.filter(Q(buyer=user) | Q(seller=user)).order_by('-create_time')
     
     @transaction.atomic 
     def create(self, request, *args, **kwargs):
-        """下单核心逻辑"""
+        """下单逻辑"""
         user = request.user
         product_id = request.data.get('product_id')
         address_info = request.data.get('address') 
@@ -31,22 +31,22 @@ class OrderViewSet(viewsets.ModelViewSet):
         if not product_id or not address_info:
             return Response({'detail': '商品id和地址信息不能为空'}, status=400)
 
-        # 1. 锁定商品，防止并发冲突
+        # 锁定商品，防止并发冲突
         try:
             product = Product.objects.select_for_update().get(id=product_id)
         except Product.DoesNotExist:
             return Response({'detail': '商品不存在'}, status=400)
 
-        # 2. 检查状态
+        # 检查状态
         if product.status != 'onsale':
             return Response({'detail': '商品已被他人抢走或已下架'}, status=400)
         if product.owner == user:
             return Response({'detail': '不能购买自己的商品'}, status=400)
 
-        # 3. 生成订单号
+        # 生成订单号
         order_sn = f"{time.strftime('%Y%m%d%H%M%S')}{user.id}{random.randint(10,99)}"
 
-        # 4. 创建订单记录
+        # 创建订单记录
         order = Order.objects.create(
             order_sn=order_sn,
             buyer=user,
@@ -56,11 +56,11 @@ class OrderViewSet(viewsets.ModelViewSet):
             receiver_info=address_info
         )
 
-        # 5. 修改商品状态为“锁定/交易中”
+        # 修改商品状态为锁定
         product.status = 'locked'
         product.save()
 
-        # 6. 如果是从购物车下单，删除购物车项
+        # 如果是从购物车下单，删除购物车项
         CartItem.objects.filter(user=user, product=product).delete()
 
         serializer = self.get_serializer(order)
@@ -91,7 +91,7 @@ class OrderViewSet(viewsets.ModelViewSet):
         if order.status not in['paid', 'shipped']:
             return Response({'detail': '当前状态无法申请退款'}, status=400)
             
-        # 状态变更为 异常/纠纷
+        # 状态变更为纠纷
         order.status = 'dispute'
         order.refund_reason = reason
         order.save()
@@ -138,10 +138,10 @@ class ReviewViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
 
     def perform_create(self, serializer):
-        # 1. 保存评价
+        # 保存评价
         review = serializer.save()
     
-        # 2. 核心逻辑：更新卖家信用分
+        # 核心逻辑：更新卖家信用分
         # 算法：5星+2分，4星+1分，3星不加，2星-5分，1星-10分
         order = review.order
         seller = order.seller
@@ -158,7 +158,7 @@ class ReviewViewSet(viewsets.ModelViewSet):
             seller.save()
             seller.refresh_from_db() 
         
-        # 3. 订单状态改为已完成
+        # 订单状态改为已完成
         order.status = 'received'
         order.save()
 

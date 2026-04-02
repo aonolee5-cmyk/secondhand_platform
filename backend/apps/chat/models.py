@@ -8,7 +8,7 @@ class Message(models.Model):
     sender = models.ForeignKey(User, on_delete=models.CASCADE, related_name='sent_messages')
     receiver = models.ForeignKey(User, on_delete=models.CASCADE, related_name='received_messages')
     content = models.TextField(verbose_name="消息内容")
-    room_name = models.CharField(max_length=50, verbose_name="房间号") # 格式: user1_user2 (id小在前)
+    room_name = models.CharField(max_length=50, verbose_name="房间号")
     timestamp = models.DateTimeField(auto_now_add=True)
     is_read = models.BooleanField(default=False)
 

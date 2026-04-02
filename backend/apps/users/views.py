@@ -14,6 +14,8 @@ from rest_framework import status
 # from rest_framework.permissions import IsAuthenticatedOrReadOnly, IsAuthenticated
 
 User = get_user_model()
+
+# 注册
 @method_decorator(csrf_exempt, name='dispatch')
 class RegisterView(generics.CreateAPIView):
     """
@@ -22,7 +24,9 @@ class RegisterView(generics.CreateAPIView):
     queryset = User.objects.all()
     permission_classes = (AllowAny,) # 允许未登录用户访问
     serializer_class = RegisterSerializer
-    
+
+
+# 用户信息    
 class UserProfileView(generics.RetrieveUpdateAPIView):
     permission_classes = [permissions.IsAuthenticated]
     serializer_class = UserProfileSerializer
@@ -65,7 +69,8 @@ class AddressViewSet(viewsets.ModelViewSet):
             # 如果新创建的地址设为默认地址，则将其他地址设为非默认
             Address.objects.filter(user=self.request.user).update(is_default=False)
         serializer.save(user=self.request.user)
-        
+
+# 实名认证        
 class RealNameVerifyView(APIView):
     permission_classes = [permissions.IsAuthenticated]
     
@@ -88,7 +93,10 @@ class RealNameVerifyView(APIView):
         user.save()
         
         return Response({'detail': '实名信息已提交，请等待管理员审核'})
-    
+
+
+ 
+ # 举报   
 class ReportViewSet(viewsets.ModelViewSet):
     ''' 举报视图 '''
     queryset = Report.objects.all()

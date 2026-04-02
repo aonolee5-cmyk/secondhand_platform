@@ -17,25 +17,21 @@ import sys
 from pathlib import Path
 from datetime import timedelta
 
-# 1. 定义项目根目录 (E:\secondhand_platform\backend)
+
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-# 2. 【核心修复】将 apps 目录加入 Python 搜索路径
-# 这样 Django 才能找到 'users', 'goods' 等应用
+
 APPS_DIR = os.path.join(BASE_DIR, 'apps')
 sys.path.insert(0, APPS_DIR)
 
-# 打印路径进行调试 (运行后可以在命令行看到确认信息)
+# 输出项目目录信息 
 print(f"当前项目根目录: {BASE_DIR}")
 print(f"已添加应用目录: {APPS_DIR}")
 
-# Quick-start development settings - unsuitable for production
-# See https://docs.djangoproject.com/en/4.2/howto/deployment/checklist/
 
-# SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = 'django-insecure-change-me-in-production'
 
-# SECURITY WARNING: don't run with debug turned on in production!
+
 DEBUG = True
 
 ALLOWED_HOSTS = []
@@ -50,7 +46,7 @@ SIMPLE_JWT = {
     'auth_header_types': ('Bearer',),
 }
 
-# Application definition
+
 
 INSTALLED_APPS = [
     'daphne',
@@ -76,7 +72,7 @@ INSTALLED_APPS = [
 # 配置 ASGI 应用
 ASGI_APPLICATION = 'core.asgi.application'
 
-# 配置 Channels 使用 Redis 作为消息中间件
+# 配置channels使用redis作为消息中间件
 CHANNEL_LAYERS = {
     "default": {
         "BACKEND": "channels_redis.core.RedisChannelLayer",
@@ -191,17 +187,17 @@ REST_FRAMEWORK = {
 # --- 跨域配置 ---
 CORS_ALLOW_ALL_ORIGINS = True  # 开发阶段允许所有跨域请求
 
-# 告诉 Django 使用我们在 users 应用中自定义的 User 模型
+
 AUTH_USER_MODEL = 'users.User'
 
-# 核心修复：添加信任的前端来源
+
 CSRF_TRUSTED_ORIGINS = [
     "http://localhost:3000",
     "http://127.0.0.1:8000",
 ]
 
-# 此外，为了确保开发环境更顺畅，建议再次确认以下两项：
-CORS_ALLOW_CREDENTIALS = True  # 允许携带 Cookie
+
+CORS_ALLOW_CREDENTIALS = True  
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",
     "http://127.0.0.1:8000",

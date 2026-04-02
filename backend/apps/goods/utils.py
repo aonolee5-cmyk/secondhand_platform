@@ -26,7 +26,7 @@ class DFAFilter:
 
     def filter(self, message, repl="*"):
         """
-        过滤函数：将敏感词替换为 *
+        将敏感词替换为 *
         """
         message = message.lower()
         ret = []

@@ -2,16 +2,15 @@ from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
 from .models import User, Report
 
-# 注册自定义用户模型，这样 admin 后台就能管理用户了
-# admin.site.register(User, UserAdmin)
+
 
 @admin.register(User)
 class UserAdmin(admin.ModelAdmin):
     list_display = ('username', 'real_name', 'verify_status', 'is_verified', 'credit_score')
     list_filter = ('verify_status',)
-    # 2. 允许在列表页直接编辑的字段
+    # 允许在列表页直接编辑的字段
     list_editable = ('verify_status', 'credit_score')
-    # 4. 搜索框
+    # 搜索框
     search_fields = ('username', 'real_name',)
     actions = ['approve_verification']
     
@@ -31,7 +30,7 @@ class ReportAdmin(admin.ModelAdmin):
     def mark_as_processed(self, request, queryset):
         for report in queryset:
             if report.status == 0:
-                # 惩罚逻辑：一旦核实举报，扣除被举报人 10 分信用
+                # 一旦核实举报，扣除被举报人 10 分信用
                 user = report.target_user
                 user.credit_score -= 10
                 user.save()

@@ -2,7 +2,7 @@
   <div class="order-container">
     <el-tabs v-model="activeTab">
       
-      <!-- ================= 买家视角 ================= -->
+      <!-- 买家视角 -->
       <el-tab-pane label="我买到的" name="buy">
         <el-table :data="buyOrders" empty-text="暂无买入订单">
           <el-table-column prop="order_sn" label="订单号" width="180" />
@@ -37,7 +37,7 @@
         </el-table>
       </el-tab-pane>
 
-      <!-- ================= 卖家视角 ================= -->
+      <!-- 卖家视角 -->
       <el-tab-pane label="我卖出的" name="sell">
         <el-table :data="sellOrders" empty-text="暂无卖出订单">
           <el-table-column prop="order_sn" label="订单号" width="180" />

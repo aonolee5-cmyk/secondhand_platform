@@ -7,7 +7,7 @@ export function getCategories() {
   })
 }
 
-// 发布商品 - 上传图片
+// 发布商品:上传图片
 export function uploadImage(data) {
   return request({ 
     url: '/goods/products/upload_image/', 
@@ -25,7 +25,7 @@ export function postProduct(data) {
   })
 }
 
-// 搜索/获取商品列表
+// 搜索商品
 export function searchProducts(params) {
   return request({
     url: '/goods/list/',

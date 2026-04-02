@@ -13,7 +13,7 @@
         </el-badge>
         <div class="info">
           <div class="top">
-            <!-- 逻辑：如果我是发送者，显示接收者名字；如果我是接收者，显示发送者名字 -->
+            <!--如果我是发送者，显示接收者名字；如果我是接收者，显示发送者名字 -->
             <span class="name">系统用户 {{ item.sender === myId ? '对方' : '联系人' }}</span>
             <span class="time">{{ formatTime(item.timestamp) }}</span>
           </div>
@@ -28,7 +28,7 @@
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import request from '@/utils/request'
-import { getProfile } from '@/api/user' // 必须引入这个
+import { getProfile } from '@/api/user' 
 
 const router = useRouter()
 const contacts = ref([])
@@ -58,11 +58,12 @@ const formatTime = (timeStr) => {
   return `${date.getMonth() + 1}-${date.getDate()} ${date.getHours()}:${date.getMinutes()}`
 }
 
-// 获取对方的名字（辅助函数）
+// 获取对方的名字
 const getTargetName = (item) => {
   return item.sender === myId.value ? `用户(ID:${item.receiver})` : `用户(ID:${item.sender})`
 }
 
+// 跳转到聊天页面
 const goToChat = (item) => {
   const targetId = item.sender === myId.value ? item.receiver : item.sender
   router.push(`/chat/${targetId}`)

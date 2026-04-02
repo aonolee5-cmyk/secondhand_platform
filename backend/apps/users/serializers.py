@@ -37,9 +37,7 @@ class RegisterSerializer(serializers.ModelSerializer):
         return attrs
 
     def create(self, validated_data):
-        # 删除 password_confirm，因为它不是模型字段
         validated_data.pop('password_confirm')
-        # 使用 create_user 方法，它会自动对密码进行加密哈希
         user = User.objects.create_user(**validated_data)
         return user
 

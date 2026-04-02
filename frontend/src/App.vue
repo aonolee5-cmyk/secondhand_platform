@@ -11,12 +11,14 @@
           <el-input 
             v-model="searchQuery" 
             placeholder="搜宝贝、搜好物..." 
-            :prefix-icon="Search" 
-            clearable 
+            class="custom-search"
             @keyup.enter="handleSearch"
             size="large"
-          />
-          <el-button type="primary" :icon="Search" @click="handleSearch" class="search-btn">搜索</el-button>
+          >
+          <template #append>
+              <el-button :icon="Search" @click="handleSearch">搜索</el-button>
+            </template>
+          </el-input>
         </div>
 
         <div class="nav-actions">
@@ -159,6 +161,7 @@ body {
   margin: 0;
   font-family: "Helvetica Neue", Helvetica, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "微软雅黑", Arial, sans-serif;
 }
+
 
 .app-wrapper {
   display: flex;

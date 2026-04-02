@@ -1,6 +1,6 @@
 <template>
   <div class="post-container">
-    <!-- 修改点 1：标题根据模式动态显示 -->
+    <!-- 标题根据模式动态显示 -->
     <el-card :header="isEdit ? '修改宝贝信息' : '发布闲置物品'">
       <el-form :model="form" label-width="100px" v-loading="loading">
         <el-form-item label="商品名称">
@@ -18,7 +18,7 @@
         </el-form-item>
 
         <el-form-item label="物品图片">
-          <!-- 修改点 2：如果是编辑模式，显示已经上传过的图片预览 -->
+          <!-- 如果是编辑模式，显示已经上传过的图片预览 -->
           <div v-if="form.images.length > 0" style="margin-bottom: 10px; display: flex; flex-wrap: wrap; gap: 10px;">
             <el-image 
               v-for="(url, index) in form.images" 
@@ -43,7 +43,7 @@
         </el-form-item>
 
         <el-form-item>
-          <!-- 修改点 3：按钮文字动态切换 -->
+          <!-- 按钮文字动态切换 -->
           <el-button type="primary" @click="onSubmit" :loading="submitting">
             {{ isEdit ? '保存修改' : '确认发布' }}
           </el-button>
@@ -67,7 +67,7 @@ const categories = ref([])
 const loading = ref(false)     // 用于加载旧数据时的转圈提示
 const submitting = ref(false)  // 防止重复点击提交
 
-// 修改点 4：核心逻辑判断，通过 URL 里有没有 id 来判断是“发布”还是“编辑”
+// 通过url里有没有id来判断是发布还是编辑
 const isEdit = computed(() => !!route.params.id)
 
 const form = reactive({
@@ -84,11 +84,11 @@ const uploadHeaders = {
 }
 
 onMounted(async () => {
-  // 1. 获取分类列表（无论哪种模式都要加载）
+  // 获取分类列表
   const res = await getCategories()
   categories.value = res
 
-  // 修改点 5：如果是编辑模式，根据 ID 去后端拿旧数据回显到表单里
+
   if (isEdit.value) {
     loading.value = true
     try {
@@ -115,7 +115,7 @@ const handleUploadSuccess = (res) => {
 const onSubmit = async () => {
   submitting.value = true
   try {
-    // 修改点 6：根据模式调用不同的 API
+    // 根据模式调用不同的api
     if (isEdit.value) {
       await updateProduct(route.params.id, form)
       ElMessage.success('修改成功，已重新进入审核！')

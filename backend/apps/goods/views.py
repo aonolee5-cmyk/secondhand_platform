@@ -22,7 +22,7 @@ class CategoryViewSet(viewsets.ReadOnlyModelViewSet):
 class ProductViewSet(viewsets.ModelViewSet):
     queryset = Product.objects.filter(status='onsale')
     serializer_class = ProductSerializer
-    # 权限：游客只读，登录可操作
+    # 设置游客只读，登录可操作
     permission_classes = [permissions.IsAuthenticatedOrReadOnly]
     filter_backends = [filters.SearchFilter, DjangoFilterBackend]
     search_fields = ['title', 'desc']
@@ -43,7 +43,7 @@ class ProductViewSet(viewsets.ModelViewSet):
         else:
             qs = Product.objects.filter(status='onsale')
 
-        # 2. 手动叠加搜索过滤 (search 参数)
+        # 2. 手动叠加搜索过滤
         search_kw = query_params.get('search', None)
         if search_kw:
             print(f">>> 后端正在搜索: {search_kw}")
@@ -51,14 +51,14 @@ class ProductViewSet(viewsets.ModelViewSet):
                 Q(title__icontains=search_kw) | Q(desc__icontains=search_kw)
             )
 
-        # 3. 手动叠加分类过滤 (category 参数)
+        # 3. 手动叠加分类过滤
         cat_id = query_params.get('category', None)
         if cat_id:
             qs = qs.filter(category_id=cat_id)
 
         return qs.order_by('-create_time')
 
-        # 动作1：上传图片
+    # 上传图片
     @action(detail=False, methods=['post'])
     def upload_image(self, request):
         file_obj = request.FILES.get('file')
@@ -67,7 +67,7 @@ class ProductViewSet(viewsets.ModelViewSet):
         path = default_storage.save(f'products/{file_obj.name}', file_obj)
         return Response({'url': f'/media/{path}'})
 
-    # 动作2：下架/上架切换
+    # 下架/上架切换
     @action(detail=True, methods=['post'])
     def change_status(self, request, pk=None):
         product = self.get_object()
@@ -78,17 +78,17 @@ class ProductViewSet(viewsets.ModelViewSet):
             return Response({'status': 'success'})
         return Response({'error': '状态非法'}, status=400)
 
-    # 💡 核心：重写发布逻辑，增加敏感词检测
+    # 发布逻辑，增加敏感词检测
     def perform_create(self, serializer):
         title = self.request.data.get('title', '')
         desc = self.request.data.get('desc', '')
         
-        # 调用下面定义的敏感词检测函数
+        # 调用敏感词检测函数
         if check_sensitive_words(title + desc):
             raise ValidationError({'detail': '内容包含违禁词，请重新编辑后再发布！'})
         
         serializer.save(owner=self.request.user)
-# --- 工具函数保持在类外面 ---
+
 def check_sensitive_words(content):
     dfa = DFAFilter()
     words = SensitiveWord.objects.values_list('word', flat=True)

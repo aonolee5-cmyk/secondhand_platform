@@ -4,7 +4,7 @@ from .models import Category, Product, SensitiveWord
 
 @admin.register(Category)
 class CategoryAdmin(admin.ModelAdmin):
-    list_display = ('id', 'name', 'icon') # 后台列表显示哪些列
+    list_display = ('id', 'name', 'icon') # 后台列表显示的列
 
 @admin.register(Product)
 class ProductAdmin(admin.ModelAdmin):

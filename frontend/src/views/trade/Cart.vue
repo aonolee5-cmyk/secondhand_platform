@@ -28,7 +28,7 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import request from '@/utils/request'
 
 const router = useRouter()
-const cartList = ref([]) // 对应模板中的 :data="cartList"
+const cartList = ref([])
 
 // 加载购物车数据
 const loadCart = async () => {

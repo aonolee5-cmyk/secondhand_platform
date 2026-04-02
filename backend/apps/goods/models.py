@@ -6,7 +6,7 @@ User = get_user_model()
 class Category(models.Model):
     """商品分类"""
     name = models.CharField(max_length=20, verbose_name="分类名称")
-    icon = models.CharField(max_length=50, blank=True, verbose_name="图标类名") # 存 Element Plus 的图标名
+    icon = models.CharField(max_length=50, blank=True, verbose_name="图标类名")
 
     class Meta:
         verbose_name = "商品分类"
@@ -31,11 +31,10 @@ class Product(models.Model):
     desc = models.TextField(verbose_name="详细描述")
     price = models.DecimalField(max_digits=10, decimal_places=2, verbose_name="价格")
     
-    # 核心难点：JSONB 字段 (Django 4.2+ 的 JSONField 对应 PG 的 JSONB)
-    # 用于存储：{'品牌': '苹果', '成色': '95新'} 等动态属性
+    # 使用jsonb字段来存储商品的动态属性
     attributes = models.JSONField(default=dict, blank=True, verbose_name="动态属性")
     
-    # 图片列表：存储图片路径列表
+    # 存储图片路径列表
     images = models.JSONField(default=list, verbose_name="图片列表")
     
     status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='audit')

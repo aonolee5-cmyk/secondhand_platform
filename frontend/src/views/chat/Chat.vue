@@ -55,7 +55,7 @@ import request from '@/utils/request'
 
 const route = useRoute()
 const targetId = parseInt(route.params.targetId) // 对方ID
-const targetName = route.query.name || '卖家'
+const targetName = route.query.name || '买家'
 const myId = ref(null)
 
 const messages = ref([])
@@ -74,7 +74,7 @@ const scrollToBottom = async () => {
 
 // 初始化
 onMounted(async () => {
-  // 1. 获取我的ID
+  // 获取我的ID
   const profile = await getProfile()
   myId.value = parseInt(profile.id)
 
@@ -84,20 +84,18 @@ onMounted(async () => {
     data:{target_id:targetId}
   })
 
-  // 2. 加载历史记录
+  // 加载历史记录
   const history = await getChatHistory(targetId)
   messages.value = history.results || history
   scrollToBottom()
 
-  // 3. 建立 WebSocket 连接
-  // 房间号逻辑：小ID_大ID (与后端一致)
+  // 建立websocket连接
   const rawIds = [myId.value, parseInt(targetId)]
   const sortedIds = rawIds.sort((a, b) => a - b) 
   const roomName = `${sortedIds[0]}_${sortedIds[1]}`
   
   console.log('DEBUG: 我的ID:', myId.value, '对方ID:', targetId, '计算出的房间名:', roomName)
   
-  // 注意：WebSocket 地址前缀是 ws://
   socket = new WebSocket(`ws://127.0.0.1:8000/ws/chat/${roomName}/`)
 
   socket.onopen = () => {
@@ -109,7 +107,7 @@ onMounted(async () => {
     const data = JSON.parse(event.data)
     // 将新消息推入列表
     messages.value.push({
-      id: Date.now(), // 临时ID
+      id: Date.now(),
       sender: data.sender_id,
       content: data.message,
       timestamp: new Date()
@@ -130,7 +128,7 @@ const sendMessage = () => {
     return
   }
 
-  // 发送 JSON 字符串
+  // 发送json字符串
   socket.send(JSON.stringify({
     message: inputMsg.value,
     sender_id: myId.value,
@@ -167,7 +165,7 @@ onUnmounted(() => {
   &.is-me {
     justify-content: flex-end;
     .bubble {
-      background-color: #95ec69; // 微信绿
+      background-color: #95ec69; 
       color: #000;
       margin-right: 10px;
       margin-left: 0;
@@ -192,7 +190,7 @@ onUnmounted(() => {
   word-break: break-all;
   box-shadow: 0 1px 2px rgba(0,0,0,0.1);
   
-  // 小三角
+ 
   &::after {
     content: '';
     position: absolute;

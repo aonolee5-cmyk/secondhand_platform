@@ -1,7 +1,7 @@
 <template>
   <div class="detail-container" v-if="product.id">
     <el-row :gutter="40">
-      <!-- 左侧：图片轮播 -->
+      <!-- 图片轮播 -->
       <el-col :span="12">
         <el-carousel height="500px" border indicator-position="outside">
           <el-carousel-item v-for="(img, index) in product.images" :key="index">
@@ -15,7 +15,7 @@
         </el-carousel>
       </el-col>
 
-      <!-- 右侧：商品信息 -->
+      <!-- 商品信息 -->
       <el-col :span="12">
         <div class="product-info">
           <h1 class="title">{{ product.title }}</h1>
@@ -33,7 +33,7 @@
             </el-avatar>
             <div class="seller-info">
               <span class="name">卖家：{{ product.owner_name }}</span>
-              <!-- 信用展示：结构图要求功能 -->
+              <!-- 信用展示 -->
               <el-tag :color="creditLevel.color" effect="dark" style="border: none; color: white">
                 {{ creditLevel.text }} ({{ product.owner_credit || 100 }})
               </el-tag>
@@ -45,7 +45,7 @@
 
           <p class="desc">{{ product.desc }}</p>
 
-          <!-- 规格参数展示 (PostgreSQL JSONB 特性展示) -->
+          <!-- 规格参数展示  -->
           <div class="attrs" v-if="product.attributes && Object.keys(product.attributes).length">
             <el-descriptions :column="1" border title="规格参数" size="small">
               <el-descriptions-item v-for="(val, key) in product.attributes" :key="key" :label="key">
@@ -67,7 +67,7 @@
             />
           </div>
 
-          <!-- 违规举报入口：放在右侧信息流底部，带虚线分割 -->
+          <!-- 违规举报入口 -->
           <div class="report-section">
             <el-button link type="info" :icon="Warning" @click="reportVisible = true">
               <span class="report-text">商品违规或虚假信息？点击举报</span>
@@ -77,7 +77,7 @@
       </el-col>
     </el-row>
 
-    <!-- 违规举报弹窗：工业级表单设计 -->
+    <!-- 违规举报弹窗 -->
     <el-dialog v-model="reportVisible" title="违规举报" width="450px" destroy-on-close>
       <el-form :model="reportForm" label-position="top">
         <el-alert 
@@ -181,6 +181,7 @@ const reportForm = reactive({
   content: ''
 })
 
+// 提交举报
 const handleReportSubmit = async () => {
   if (!reportForm.reason) {
     ElMessage.warning('请选择举报理由')
@@ -247,14 +248,13 @@ const handleBuy = async () => {
 
     await createOrder(orderData)
     
-    // 4. 成功反馈
+    // 成功
     ElMessage.success('下单成功！')
     
-    // 5. 跳转到订单列表页去支付
+    // 跳转到订单列表页去支付
     router.push('/orders')
 
   } catch (err) {
-    // 捕获“取消”操作或后端报错
     if (err !== 'cancel') {
       console.error(err)
     }

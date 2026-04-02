@@ -8,11 +8,11 @@ User = get_user_model()
 
 class ChatConsumer(AsyncWebsocketConsumer):
     async def connect(self):
-        # 获取 URL 中的房间号 (例如: 1_2)
+        # 获取 URL 中的房间号
         self.room_name = self.scope['url_route']['kwargs']['room_name']
         self.room_group_name = f'chat_{self.room_name}'
 
-        # 加入 Redis 频道组
+        # 加入频道组
         await self.channel_layer.group_add(
             self.room_group_name,
             self.channel_name
@@ -38,7 +38,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
         # 保存到数据库
         await self.save_message(sender_id, receiver_id, message)
 
-        # 广播给组内的所有人 (包括自己)
+        # 广播消息
         await self.channel_layer.group_send(
             self.room_group_name,
             {
@@ -48,7 +48,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
             }
         )
 
-    # 处理组内广播的消息
+    # 处理消息
     async def chat_message(self, event):
         await self.send(text_data=json.dumps({
             'message': event['message'],
@@ -59,7 +59,6 @@ class ChatConsumer(AsyncWebsocketConsumer):
     def save_message(self, sender_id, receiver_id, message):
         sender = User.objects.get(id=sender_id)
         receiver = User.objects.get(id=receiver_id)
-        # 保证房间名一致性: id小的在前
         ids = sorted([int(sender_id), int(receiver_id)])
         room_name = f"{ids[0]}_{ids[1]}"
         

@@ -11,7 +11,7 @@ import os
 from django.core.asgi import get_asgi_application
 
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'core.settings')
-# 初始化 Django ASGI 应用
+# 初始化应用
 django_asgi_app = get_asgi_application()
 
 from channels.auth import AuthMiddlewareStack

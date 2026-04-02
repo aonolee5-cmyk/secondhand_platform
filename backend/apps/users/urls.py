@@ -21,7 +21,7 @@ urlpatterns = [
     # 收货地址
     path('addresses/', AddressViewSet.as_view({'get': 'list', 'post': 'create'}), 
          name='address_list_create'),
-    # 收货地址详情、更新、删除
+    # 收货地址详情，更新，删除
     path('addresses/<int:pk>/', AddressViewSet.as_view({'get': 'retrieve', 
                                                         'put': 'update', 
                                                         'delete': 'destroy'

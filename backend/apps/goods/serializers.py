@@ -7,7 +7,7 @@ class CategorySerializer(serializers.ModelSerializer):
         fields = '__all__'
 
 class ProductSerializer(serializers.ModelSerializer):
-    # 显示用户名而不是 ID
+    # 显示用户名
     owner_name = serializers.ReadOnlyField(source='owner.username')
     category_name = serializers.ReadOnlyField(source='category.name')
 

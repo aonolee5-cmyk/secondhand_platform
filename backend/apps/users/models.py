@@ -41,7 +41,7 @@ class User(AbstractUser):
     class Meta:
         verbose_name = "用户"
         verbose_name_plural = verbose_name
-        db_table = "users_user" # 指定数据库表名
+        db_table = "users_user" 
 
 class Address(models.Model):
     ''' 收货地址模型 '''

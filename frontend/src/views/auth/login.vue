@@ -7,7 +7,7 @@
         </div>
       </template>
       
-      <!-- 绑定 form 数据 -->
+      <!-- 绑定form数据 -->
       <el-form :model="loginForm" :rules="rules" ref="loginFormRef" label-width="80px">
         <el-form-item label="用户名" prop="username">
           <el-input v-model="loginForm.username" placeholder="请输入用户名" />
@@ -29,7 +29,7 @@
       </el-form>
       
       <div class="links">
-        <el-link type="primary">注册账号</el-link>
+        <el-link type="primary" underline="false" @click="$router.push('/register')">注册账号</el-link>
       </div>
     </el-card>
   </div>
@@ -39,7 +39,6 @@
 import { ref, reactive } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-// 引入刚才定义的 API
 import { login } from '@/api/auth'
 
 const router = useRouter()
@@ -69,10 +68,10 @@ const handleLogin = () => {
         const res = await login(loginForm)
         console.log('登录成功，后端返回:', res)
         
-        // 2. 存储 Token
+        // 存储 Token
         if (res.access) {
             localStorage.setItem('token', res.access)
-            localStorage.setItem('refresh_token', res.refresh) // 可选：用于刷新
+            localStorage.setItem('refresh_token', res.refresh) // 用于刷新
             
             ElMessage.success('登录成功')
             router.replace('/') // 跳转首页
@@ -82,7 +81,6 @@ const handleLogin = () => {
 
       } catch (error) {
         console.error('登录报错:', error)
-        // 错误提示已在 request.js 拦截器中统一处理，这里不用写了
       } finally {
         loading.value = false
       }

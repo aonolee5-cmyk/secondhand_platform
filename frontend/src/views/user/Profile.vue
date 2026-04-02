@@ -1,7 +1,7 @@
 <template>
   <div class="profile-container">
     <el-row :gutter="25">
-      <!-- 左侧：用户卡片  -->
+      <!-- 用户卡片  -->
       <el-col :span="8">
         <el-card class="user-info-card" shadow="hover">
           <div class="user-avatar-box">
@@ -55,11 +55,11 @@
         </el-card>
       </el-col>
 
-      <!-- 右侧：功能管理区 -->
+      <!-- 功能管理区 -->
       <el-col :span="16">
         <el-tabs type="border-card" class="profile-tabs">
           
-          <!-- 1. 个人信息管理 -->
+          <!-- 个人信息管理 -->
           <el-tab-pane>
             <template #label>
               <span class="tab-label"><el-icon><User /></el-icon> 个人信息管理</span>
@@ -76,7 +76,7 @@
                 <el-input v-model="user.mobile" placeholder="用于接收订单通知" />
               </el-form-item>
               <el-form-item label="个性签名">
-                <el-input v-model="user.bio" type="textarea" :rows="2" placeholder="向买家介绍一下自己" />
+                <el-input v-model="user.bio" type="textarea" :rows="2" placeholder="介绍一下自己吧" />
               </el-form-item>
               <el-form-item>
                 <el-button type="primary" @click="handleUpdate">保存资料修改</el-button>
@@ -84,7 +84,7 @@
             </el-form>
           </el-tab-pane>
 
-          <!-- 2. 实名认证 -->
+          <!-- 实名认证 -->
           <el-tab-pane>
             <template #label>
               <span class="tab-label"><el-icon><Postcard /></el-icon> 实名认证</span>
@@ -215,7 +215,7 @@ const user = ref({
   avatar: '',
   credit_score: 0,
   is_verified: false,
-  verify_status: 0, // 0-未认证，1-审核中，2-已认证，3-审核驳回
+  verify_status: 0, // 0未认证，1审核中，2已认证，3审核驳回
   real_name: '', // 实名认证后返回的真实姓名
 })
 
@@ -290,7 +290,7 @@ const handleVerify = async () => {
   try {
     await submitVerify(verifyForm)
     ElMessage.success('认证信息提交成功')
-    fetchUserData() // 刷新状态变为“审核中”
+    fetchUserData() // 刷新状态变为 审核中
   } catch (error) {
     console.error(error)
   } finally {

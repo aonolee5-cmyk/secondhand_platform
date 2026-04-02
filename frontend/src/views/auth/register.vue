@@ -16,6 +16,9 @@
         </el-form-item>
         <el-button type="primary" @click="handleRegister" style="width: 100%">立即注册</el-button>
       </el-form>
+        <div style="text-align: right; margin-top: 15px;">
+          <el-link type="info" @click="$router.push('/login')">已有账号？返回登录</el-link>
+        </div>
     </el-card>
   </div>
 </template>
@@ -40,7 +43,7 @@ const handleRegister = async () => {
     ElMessage.success('注册成功，请登录')
     router.push('/login')
   } catch (err) {
-    // 错误已由拦截器处理
+    
   }
 }
 </script>
