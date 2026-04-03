@@ -11,7 +11,7 @@ class UserProfileSerializer(serializers.ModelSerializer):
     """
     class Meta:
         model = User
-        fields = ['id', 'username', 'nickname', 'mobile', 'avatar', 'real_name', 'id_card', 'is_verified', 'credit_score']
+        fields = ['id', 'username', 'nickname', 'mobile', 'avatar', 'real_name', 'id_card', 'is_verified', 'credit_score', 'verify_status']
         read_only_fields = ['username', 'credit_score', 'is_verified']
 
 class AddressSerializer(serializers.ModelSerializer):

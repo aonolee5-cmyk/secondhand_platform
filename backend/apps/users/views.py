@@ -53,7 +53,7 @@ class AddressViewSet(viewsets.ModelViewSet):
             Address.objects.filter(user=self.request.user).update(is_default=False)
         serializer.save(user=self.request.user)
     
-    @action(detail=True, methods=['post'])
+    @action(detail=True, methods=['post'], url_path='set_default')
     def set_default(self, request, pk=None):
         ''' 设置默认地址 '''
         address = self.get_object()

@@ -89,11 +89,11 @@
             <template #label>
               <span class="tab-label"><el-icon><Postcard /></el-icon> 实名认证</span>
             </template>
-            
+  
           <!-- 认证通过 ---->
-          <div v-if="user.verify_status === 2" class="verified-box">
+          <div v-if="user.verify_status === 2" class="verified-box">      
             <el-result icon="success" title="身份核验已通过" :sub-title="'真实姓名：' + maskName(user.real_name)">
-              <template #extra>
+               <template #extra>
                 <p class="security-info">您的身份信息已加密处理，平台严格保障隐私安全</p>
                 <el-tag type="success" effect="plain">已认证</el-tag>
               </template>
@@ -109,31 +109,35 @@
             </el-result>
           </div>
 
-          <!-- 未认证 -->
-          <div v-else class="unverified-box">
-            <el-alert 
-              v-if="user.verify_status === 3" 
-              title="认证被驳回：请检查信息是否真实有效并重新提交" 
-              type="error" 
-              show-icon 
-              style="margin-bottom: 20px" 
-            />
-            <el-alert title="实名认证须知" type="warning" show-icon :closable="false" style="margin-bottom: 25px">
-                实名认证通过后可提升账号权重及买家信任度，是发布商品的前提。
-            </el-alert>
-            <el-form :model="verifyForm" label-width="100px" ref="verifyFormRef">
-              <el-form-item label="真实姓名">
-                <el-input v-model="verifyForm.real_name" placeholder="请输入身份证姓名" />
-              </el-form-item>
-              <el-form-item label="身份证号">
-                <el-input v-model="verifyForm.id_card" placeholder="请输入18位二代身份证号" maxlength="18" />
-              </el-form-item>
-              <el-form-item>
-                <el-button type="success" @click="handleVerify" :loading="verifying">提交实名申请</el-button>
-              </el-form-item>
-            </el-form>
-          </div>
-          </el-tab-pane>
+        <!-- 未认证/被驳回 -->
+        <div v-else class="unverified-box">
+          <el-alert 
+            v-if="user.verify_status === 3" 
+            title="认证被驳回：请检查信息是否真实有效并重新提交" 
+            type="error" 
+            show-icon 
+            style="margin-bottom: 20px" 
+          />
+          <el-alert title="实名认证须知" type="warning" show-icon :closable="false" style="margin-bottom: 25px">
+              实名认证通过后可提升账号权重及买家信任度，是发布商品的前提。
+          </el-alert>
+    
+          <!-- 【修改点：增加了 :rules="verifyRules"】 -->
+          <el-form :model="verifyForm" :rules="verifyRules" label-width="100px" ref="verifyFormRef">
+            <!-- 【修改点：增加了 prop="real_name" 才能让校验生效】 -->
+            <el-form-item label="真实姓名" prop="real_name">
+              <el-input v-model="verifyForm.real_name" placeholder="请输入身份证姓名" />
+            </el-form-item>
+            <!-- 【修改点：增加了 prop="id_card" 才能让校验生效】 -->
+            <el-form-item label="身份证号" prop="id_card">
+              <el-input v-model="verifyForm.id_card" placeholder="请输入18位二代身份证号" maxlength="18" />
+            </el-form-item>
+            <el-form-item>
+              <el-button type="success" @click="handleVerify" :loading="verifying">提交实名申请</el-button>
+            </el-form-item>
+          </el-form>
+        </div>
+      </el-tab-pane>
 
 
           <el-tab-pane label="地址管理">
@@ -197,16 +201,17 @@
 <script setup>
 import { ref, onMounted, reactive } from 'vue'
 import { 
-  getProfile, updateProfile, updateAvatar,submitVerify, 
-  getAddresses, addAddress, deleteAddress, setDefaultAddress } from '@/api/user'
+  getProfile, updateProfile, updateAvatar, submitVerify, 
+  getAddresses, addAddress, deleteAddress, setDefaultAddress 
+} from '@/api/user'
 import { ElMessage } from 'element-plus'
 import { 
   User, Postcard, Location, QuestionFilled, 
-  CircleCheck, Warning, Camera
+  CircleCheck, Warning, Camera, Plus 
 } from '@element-plus/icons-vue'
-import {Plus} from '@element-plus/icons-vue'
 import { regionData, codeToText } from 'element-china-area-data'
 
+// --- 1. 用户基础数据 ---
 const user = ref({
   username: '',
   nickname: '',
@@ -216,29 +221,12 @@ const user = ref({
   credit_score: 0,
   is_verified: false,
   verify_status: 0, // 0未认证，1审核中，2已认证，3审核驳回
-  real_name: '', // 实名认证后返回的真实姓名
+  real_name: '', 
+  id_card: ''
 })
 
-const regionOptions = regionData
-const addressesList = ref([]) // 用户地址列表
-const addressDialogVisible = ref(false)
-const addressForm = reactive({
-  receiver: '',
-  mobile: '',
-  regionCode: [],
-  detail: '',
-  is_Default: false,
-})
-
-
-const avatarFile = ref(false)
-
-const verifyForm = reactive({
-  real_name: '',
-  id_card: '',
-})
-// 获取用户资料
-const fetchUserData = async () => {
+// --- 2. 生命周期与数据加载 (合并冗余代码) ---
+const loadProfile = async () => { 
   try {
     const res = await getProfile()
     user.value = res
@@ -247,30 +235,21 @@ const fetchUserData = async () => {
   }
 }
 
-onMounted(fetchUserData)
-
-// 信用颜色计算
-const getCreditColor = (score) => {
-  if (score >= 90) return 'text-success'
-  if (score >= 70) return 'text-primary'
-  return 'text-danger'
+const loadAddresses = async () => {
+   try {
+     const res = await getAddresses()
+     addressesList.value = res.results || res
+   } catch (error) {
+     console.error('获取地址列表失败:', error)
+   }
 }
 
-// 信用等级计算
-const getCreditLevel = (score) => {
-  if (score >= 90) return '极好'
-  if (score >= 70) return '良好'
-  return '一般'
-}
+onMounted(() => {
+  loadProfile()
+  loadAddresses()
+})
 
-const verifying = ref(false)
-// 名字脱敏显示
-const maskName = (name) => {
-  if (!name) return ''
-  return name.charAt(0) + '*'.repeat(name.length - 1)
-}
-
-// 更新用户信息
+// --- 3. 个人信息与头像修改 ---
 const handleUpdate = async () => {
   await updateProfile({ 
     nickname: user.value.nickname,
@@ -278,24 +257,7 @@ const handleUpdate = async () => {
     bio: user.value.bio 
   })
   ElMessage.success('个人资料保存成功')
-  fetchUserData() 
-}
-
-const handleVerify = async () => {
-  if (!verifyForm.real_name || !verifyForm.id_card) {
-    ElMessage.error('请填写正确的身份信息')
-    return
-  }
-  verifying.value = true
-  try {
-    await submitVerify(verifyForm)
-    ElMessage.success('认证信息提交成功')
-    fetchUserData() // 刷新状态变为 审核中
-  } catch (error) {
-    console.error(error)
-  } finally {
-    verifying.value = false
-  }
+  loadProfile() 
 }
 
 const beforeAvatarUpload = (rawFile) => {
@@ -315,43 +277,107 @@ const handleAvatarUpload = async (options) => {
   try {
     await updateAvatar(formData)
     ElMessage.success('头像更新成功')
-    fetchUserData() // 刷新界面
+    loadProfile() 
   } catch (error) {
     console.error(error)
   }
 }
 
-const loadAddresses = async () => {
-   const res = await getAddresses()
-   addressesList.value = res.results || res
+// 信用相关计算
+const getCreditColor = (score) => {
+  if (score >= 90) return 'text-success'
+  if (score >= 70) return 'text-primary'
+  return 'text-danger'
+}
+const getCreditLevel = (score) => {
+  if (score >= 90) return '极好'
+  if (score >= 70) return '良好'
+  return '一般'
 }
 
-const loadProfile = async () => { 
-  try {
-    const res = await getProfile()
-    console.log('后端返回数据：', res)
-    user.value = res
-  } catch (error) {
-    console.error(error)
-  }
-}
-
-onMounted(() => {
-  loadProfile()
-  loadAddresses()
+// --- 4. 实名认证核心逻辑 (重点修复区域) ---
+const verifying = ref(false)
+const verifyFormRef = ref(null) // 【修复】必须定义 ref 才能触发表单校验
+const verifyForm = reactive({
+  real_name: '',
+  id_card: '',
 })
+
+// 【新增】严格的正则表达式校验规则
+const verifyRules = {
+  real_name:[
+    { required: true, message: '请输入真实姓名', trigger: 'blur' },
+    { pattern: /^[\u4e00-\u9fa5]{2,10}$/, message: '姓名必须是汉字', trigger: 'blur' }
+  ],
+  id_card:[
+    { required: true, message: '请输入身份证号', trigger: 'blur' },
+    { 
+      pattern: /^[1-9]\d{5}(18|19|20)\d{2}((0[1-9])|(1[0-2]))(([0-2][1-9])|10|20|30|31)\d{3}[0-9Xx]$/, 
+      message: '请输入正确的18位二代身份证号码', 
+      trigger: 'blur' 
+    }
+  ]
+}
+
+const maskName = (name) => {
+  if (!name) return ''
+  return name.length > 2 ? name.charAt(0) + '*' + name.charAt(name.length - 1) : name.charAt(0) + '*'
+}
+
+// 【修复】改用 Form.validate 触发正则校验
+const handleVerify = () => {
+  if (!verifyFormRef.value) return
+  
+  verifyFormRef.value.validate(async (valid) => {
+    if (valid) {
+      verifying.value = true
+      try {
+        await submitVerify(verifyForm)
+        ElMessage.success('认证信息提交成功，请等待审核')
+        user.value.verify_status = 1 // 强制改变前端状态，界面瞬间切换为“审核中”
+        loadProfile() // 后台刷新数据
+      } catch (error) {
+        console.error(error)
+      } finally {
+        verifying.value = false
+      }
+    } else {
+      ElMessage.error('请检查标红的信息是否有误')
+    }
+  })
+}
+
+// --- 5. 地址管理逻辑 (修复级联和大小写Bug) ---
+const regionOptions = regionData
+const addressesList = ref([]) 
+const addressDialogVisible = ref(false)
+const addressForm = reactive({
+  receiver: '',
+  mobile: '',
+  regionCode:[],
+  detail: '',
+  is_default: false, // 【修复】统一改为小写
+})
+
 const openAddressDialog = () => {
-  Object.assign(addressForm, { receiver: '',
-   mobile: '', 
-   region: '', 
-   detail: '', 
-   is_default: false })
+  Object.assign(addressForm, { 
+    receiver: '',
+    mobile: '', 
+    regionCode:[], // 【修复】级联选择器需要置空数组，而不是空字符串
+    detail: '', 
+    is_default: false 
+  })
   addressDialogVisible.value = true
 }
 
-
 const submitAddress = async () => {
-  const regionText = addressForm.regionCode.map(code => codeToText[code]).join('')
+  if (addressForm.regionCode.length === 0) {
+    ElMessage.warning('请选择省市区')
+    return
+  }
+
+  // 级联代码转换为文字
+  const regionText = addressForm.regionCode.map(code => codeToText[code]).join(' ')
 
   const submitData = {
     receiver: addressForm.receiver,
@@ -361,10 +387,14 @@ const submitAddress = async () => {
     is_default: addressForm.is_default
   }
 
-  await addAddress(submitData)
-  ElMessage.success('地址添加成功')
-  addressDialogVisible.value = false
-  loadAddresses()
+  try {
+    await addAddress(submitData)
+    ElMessage.success('地址添加成功')
+    addressDialogVisible.value = false
+    loadAddresses()
+  } catch (error) {
+    console.error('地址提交失败', error)
+  }
 }
 
 const handleDeleteAddress = async (id) => {
@@ -375,9 +405,9 @@ const handleDeleteAddress = async (id) => {
 
 const handleSetDefault = async (id) => {
   await setDefaultAddress(id)
+  ElMessage.success('已设为默认地址')
   loadAddresses()
 }
-
 </script>
 
 <style scoped lang="scss">

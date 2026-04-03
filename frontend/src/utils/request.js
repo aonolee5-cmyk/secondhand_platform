@@ -65,6 +65,8 @@ service.interceptors.response.use(
       }
     }
 
+    // ... 前面的 Token 刷新逻辑完全保持不变 ...
+
     // 处理其他错误
     console.error('API Error:', error)
     let message = '系统未知错误'
@@ -75,12 +77,23 @@ service.interceptors.response.use(
         localStorage.clear()
         router.push('/login')
       } else {
-        switch (error.response.status) {
-          case 400: message = '请求参数错误'; break;
-          case 403: message = '权限不足，拒绝访问'; break;
-          case 404: message = '请求资源不存在'; break;
-          case 500: message = '服务器繁忙，请稍后再试'; break;
-          default: message = `连接错误: ${error.response.status}`;
+        // 【关键修改点：优先读取后端返回的真实错误信息】
+        const backendData = error.response.data;
+        // DRF 报错通常在 detail, error, non_field_errors 或 message 字段里
+        const backendMsg = backendData.detail || backendData.error || backendData.non_field_errors || backendData.message;
+        
+        if (backendMsg) {
+          // 如果后端传了具体的文字，直接使用后端的文字（比如："您已通过实名认证，无需重复提交"）
+          message = Array.isArray(backendMsg) ? backendMsg[0] : backendMsg;
+        } else {
+          // 如果后端没传具体的文字，再用状态码兜底
+          switch (error.response.status) {
+            case 400: message = '请求参数错误'; break;
+            case 403: message = '权限不足，拒绝访问'; break;
+            case 404: message = '请求资源不存在'; break;
+            case 500: message = '服务器内部错误'; break;
+            default: message = `连接错误: ${error.response.status}`;
+          }
         }
       }
     } else if (error.message.includes('timeout')) {
