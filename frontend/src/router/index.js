@@ -1,4 +1,7 @@
 import { createRouter, createWebHistory } from 'vue-router'
+import AdminLayout from '@/views/admin/AdminLayout.vue'
+import AdminDashboard from '@/views/admin/Dashboard.vue'
+import AdminOrders from '@/views/admin/OrderList.vue'
 
 const routes = [
   // 首页
@@ -91,6 +94,28 @@ const routes = [
     component: () => import('@/views/chat/List.vue'),
     meta: { requireAuth: true } // 只有登录才能访问,
   },
+
+  
+  {
+    path: '/admin',
+    component: AdminLayout, // 使用你刚写的深色侧边栏布局
+    redirect: '/admin/dashboard',
+    meta: { title: '管理中心', requiresAdmin: true },
+    children: [
+      {
+        path: 'dashboard',
+        name: 'AdminDashboard',
+        component: AdminDashboard,
+        meta: { title: '数据大盘' }
+      },
+      {
+        path: 'orders',
+        name: 'AdminOrders',
+        component: AdminOrders,
+        meta: { title: '纠纷仲裁' }
+      }
+    ]
+  }
 ]
 
 const router = createRouter({

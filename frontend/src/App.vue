@@ -55,7 +55,15 @@
                 <el-dropdown-menu>
                   <el-dropdown-item @click="$router.push('/profile')">个人中心</el-dropdown-item>
                   <el-dropdown-item @click="$router.push('/my-products')">我的发布</el-dropdown-item>
-                  <el-dropdown-item @click="$router.push('/orders')"divided>我的订单</el-dropdown-item> 
+                  <el-dropdown-item @click="$router.push('/orders')"divided>我的订单</el-dropdown-item>
+                  <el-dropdown-item 
+                    v-if="isAdmin"
+                    @click="$router.push('/admin')" 
+                    style="color: #E6A23C; font-weight: bold;"
+                    divided
+                  >
+                    <el-icon><Monitor /></el-icon>管理后台
+                    </el-dropdown-item>
                   <el-dropdown-item divided @click="handleLogout">退出登录</el-dropdown-item>
                 </el-dropdown-menu>
               </template>
@@ -89,13 +97,16 @@ import { useRouter, useRoute } from 'vue-router'
 import { Search, Plus, Shop, ArrowDown, ShoppingCart, ChatLineRound } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import request from '@/utils/request'
+import { computed } from 'vue'
 
 const router = useRouter()
 const route = useRoute()
 const searchQuery = ref('')
 const isLogin = ref(false)
 const unreadTotal = ref(0)
-
+const username = ref('')
+const userRole = ref('')
+const isAdmin = ref(false)
 
 const checkUnread = async () => {
   if (localStorage.getItem('token')) {
@@ -110,8 +121,17 @@ const checkUnread = async () => {
 
 const checkLogin = () => {
   const token = localStorage.getItem('token')
-  if (isLogin.value !== !!token) {
-    isLogin.value = !!token
+  const storedName = localStorage.getItem('username')
+  const name = localStorage.getItem('username')
+  console.log('当前检测到的用户名:', name)
+  if (token && storedName) {
+    isLogin.value = true
+    username.value = storedName
+    // 判断是否为 admin
+    userRole.value = storedName === 'admin' ? 'admin' : 'user'
+  } else {
+    isLogin.value = false
+    userRole.value = ''
   }
 }
 
@@ -153,6 +173,32 @@ const handleSearch = () => {
   if (route.query.q === q) return
   router.push({ path: '/', query: { q: q } })
 }
+
+
+const initUserStatus = () => {
+  const token = localStorage.getItem('token')
+  const username = localStorage.getItem('username')
+  isLogin.value = !!token
+  isAdmin.value = (username === 'admin')
+}
+
+
+onMounted(() => {
+  // 你可以根据用户信息里的 username 或者 is_staff 字段来判断
+  // 临时方案：直接看 username
+  const username = localStorage.getItem('username') 
+  if (username === 'admin') {
+    userRole.value = 'admin'
+  }
+})
+
+watch (()=>route.path, ()=>{
+  initUserStatus()
+})
+
+onMounted (()=>{
+  initUserStatus()
+})
 </script>
 
 <style lang="scss">

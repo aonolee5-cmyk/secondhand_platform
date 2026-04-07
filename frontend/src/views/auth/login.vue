@@ -59,28 +59,22 @@ const rules = {
 
 // 登录处理函数
 const handleLogin = () => {
-  if (!loginFormRef.value) return
-  
   loginFormRef.value.validate(async (valid) => {
     if (valid) {
       loading.value = true
       try {
         const res = await login(loginForm)
-        console.log('登录成功，后端返回:', res)
-        
-        // 存储 Token
         if (res.access) {
-            localStorage.setItem('token', res.access)
-            localStorage.setItem('refresh_token', res.refresh) // 用于刷新
-            
-            ElMessage.success('登录成功')
-            router.replace('/') // 跳转首页
-        } else {
-            ElMessage.error('登录失败：未获取到令牌')
+          localStorage.setItem('token', res.access)
+          // 【关键修复】存入用户名，供全站判断身份使用
+          localStorage.setItem('username', loginForm.username) 
+          
+          ElMessage.success('登录成功')
+          // 这里建议用 window.location.href 或者刷新一下，确保 App.vue 重新加载状态
+          window.location.href = '/' 
         }
-
       } catch (error) {
-        console.error('登录报错:', error)
+        console.error(error)
       } finally {
         loading.value = false
       }
