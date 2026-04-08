@@ -95,32 +95,64 @@ const routes = [
     meta: { requireAuth: true } // 只有登录才能访问,
   },
 
-  
+  // 后台
   {
-    path: '/admin',
-    component: AdminLayout, // 使用你刚写的深色侧边栏布局
-    redirect: '/admin/dashboard',
-    meta: { title: '管理中心', requiresAdmin: true },
-    children: [
-      {
-        path: 'dashboard',
-        name: 'AdminDashboard',
-        component: AdminDashboard,
-        meta: { title: '数据大盘' }
-      },
-      {
-        path: 'orders',
-        name: 'AdminOrders',
-        component: AdminOrders,
-        meta: { title: '纠纷仲裁' }
-      }
-    ]
-  }
+  path: '/admin',
+  component: AdminLayout, 
+  redirect: '/admin/dashboard',
+  meta: { title: '管理中心', requiresAdmin: true },
+  children: [
+    {
+      path: 'dashboard',
+      name: 'AdminDashboard',
+      component: () => import('@/views/admin/Dashboard.vue'), // 建议用懒加载
+      meta: { title: '数据大盘' }
+    },
+    {
+      path: 'orders',
+      name: 'AdminOrders',
+      component: () => import('@/views/admin/OrderList.vue'),
+      meta: { title: '纠纷仲裁' }
+    },
+    // 【核心新增：对应侧边栏的商品管理】
+    {
+      path: 'products',
+      name: 'AdminProducts',
+      component: () => import('@/views/admin/ProductAudit.vue'),
+      meta: { title: '商品审核' }
+    },
+    {
+      path: 'sensitive',
+      name: 'AdminSensitive',
+      component: () => import('@/views/admin/SensitiveWords.vue'),
+      meta: { title: '敏感词库' }
+    },
+    // 【核心新增：对应侧边栏的用户安全】
+    {
+      path: 'users',
+      name: 'AdminUsers',
+      component: () => import('@/views/admin/UserList.vue'),
+      meta: { title: '用户管理' }
+    }
+  ]
+}
 ]
 
-const router = createRouter({
+const router = createRouter ({
   history: createWebHistory(),
   routes
 })
+
+router.beforeEach((to, from, next) => {
+  const isStaff = localStorage.getItem('is_staff') == 'true'
+  if (to.path.startsWith('/admin') && !isStaff) {
+    ElMessage.error('该区域仅限管理人员进入')
+    next('/')
+  } else {
+    next()
+  }
+})
+
+
 
 export default router

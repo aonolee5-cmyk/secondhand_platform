@@ -1,5 +1,6 @@
 from rest_framework import serializers
 from .models import Category, Product
+from .models import SensitiveWord
 
 class CategorySerializer(serializers.ModelSerializer):
     class Meta:
@@ -15,3 +16,8 @@ class ProductSerializer(serializers.ModelSerializer):
         model = Product
         fields = '__all__'
         read_only_fields = ('owner', 'status', 'create_time')
+        
+class SensitiveWordSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = SensitiveWord
+        fields = '__all__'

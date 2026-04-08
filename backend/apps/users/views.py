@@ -12,6 +12,9 @@ from .serializers import UserProfileSerializer, AddressSerializer
 from rest_framework.decorators import action
 from rest_framework import status
 # from rest_framework.permissions import IsAuthenticatedOrReadOnly, IsAuthenticated
+from rest_framework_simplejwt.views import TokenObtainPairView
+from .serializers import MyTokenObtainPairSerializer
+from .serializers import CustomTokenObtainPairSerializer
 
 User = get_user_model()
 
@@ -106,3 +109,7 @@ class ReportViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         # 自动关联举报人
         serializer.save(reporter=self.request.user)
+        
+
+class MyTokenObtainPairView(TokenObtainPairView):
+    serializer_class = CustomTokenObtainPairSerializer

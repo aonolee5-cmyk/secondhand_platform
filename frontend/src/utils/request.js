@@ -2,13 +2,12 @@ import axios from 'axios'
 import { ElMessage } from 'element-plus'
 import router from '@/router'
 
-
 const service = axios.create({
-  baseURL: '/api', 
-  timeout: 60000 // 请求超时时间为60秒
+  baseURL: '/api',
+  timeout: 60000
 })
 
-// 请求拦截器
+// --- 请求拦截器 (你代码里好像没发这部分，补上) ---
 service.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('token')
@@ -17,100 +16,89 @@ service.interceptors.request.use(
     }
     return config
   },
-  (error) => {
-    return Promise.reject(error)
-  }
+  (error) => Promise.reject(error)
 )
 
-// 响应拦截器
+// --- 响应拦截器 ---
 service.interceptors.response.use(
-  (response) => {
-    // 成功响应直接返回数据
-    return response.data
-  },
+  (response) => response.data,
   async (error) => {
-    const originalRequest = error.config; // 获取原始请求配置
-
-    // 处理401错误
+    const originalRequest = error.config
+    
+    // 1. 处理 401 身份过期 (自动无感刷新 Token)
     if (error.response && error.response.status === 401 && !originalRequest._retry) {
-      originalRequest._retry = true; // 标记该请求已经重试过一次，防止死循环
-      
-      const refreshToken = localStorage.getItem('refresh_token');
+      // 如果是登录接口报 401，说明密码错或账号封禁，直接跳过刷新逻辑
+      if (originalRequest.url.includes('/users/login/')) {
+        return handleGeneralError(error)
+      }
+
+      originalRequest._retry = true
+      const refreshToken = localStorage.getItem('refresh_token')
       
       if (refreshToken) {
         try {
-          console.log('检测到 Access Token 过期，正在尝试刷新...');
+          // 使用相对路径，走 Vite 代理
+          const res = await axios.post('/api/users/token/refresh/', { refresh: refreshToken })
+          const newAccessToken = res.data.access
+          localStorage.setItem('token', newAccessToken)
           
-          // 发送刷新令牌请求
-          const res = await axios.post('http://127.0.0.1:8000/api/users/token/refresh/', {
-            refresh: refreshToken
-          });
-
-          // 获取并存储新的token
-          const newAccessToken = res.data.access;
-          localStorage.setItem('token', newAccessToken);
-          console.log('Token 刷新成功！');
-
-          // 更新header并重新发送
-          originalRequest.headers['Authorization'] = `Bearer ${newAccessToken}`;
-          return service(originalRequest); 
-
+          // 重试原始请求
+          originalRequest.headers['Authorization'] = `Bearer ${newAccessToken}`
+          return service(originalRequest)
         } catch (refreshError) {
-          console.error('刷新令牌失效了，请重新登录');
-          localStorage.clear();
-          router.push('/login');
-          ElMessage.error('登录状态已失效，请重新登录');
-          return Promise.reject(refreshError);
+          // 刷新令牌也失效了，强制登出
+          localStorage.clear()
+          window.location.href = '/login'
+          return Promise.reject(refreshError)
         }
       }
     }
 
-    // ... 前面的 Token 刷新逻辑完全保持不变 ...
-
-    // 处理其他错误
-    console.error('API Error:', error)
-    let message = '系统未知错误'
-    
-    if (error.response) {
-      if (error.response.status === 401) {
-        message = '身份验证已过期，请重新登录'
-        localStorage.clear()
-        router.push('/login')
-      } else {
-        // 【关键修改点：优先读取后端返回的真实错误信息】
-        const backendData = error.response.data;
-        // DRF 报错通常在 detail, error, non_field_errors 或 message 字段里
-        const backendMsg = backendData.detail || backendData.error || backendData.non_field_errors || backendData.message;
-        
-        if (backendMsg) {
-          // 如果后端传了具体的文字，直接使用后端的文字（比如："您已通过实名认证，无需重复提交"）
-          message = Array.isArray(backendMsg) ? backendMsg[0] : backendMsg;
-        } else {
-          // 如果后端没传具体的文字，再用状态码兜底
-          switch (error.response.status) {
-            case 400: message = '请求参数错误'; break;
-            case 403: message = '权限不足，拒绝访问'; break;
-            case 404: message = '请求资源不存在'; break;
-            case 500: message = '服务器内部错误'; break;
-            default: message = `连接错误: ${error.response.status}`;
-          }
-        }
-      }
-    } else if (error.message.includes('timeout')) {
-      message = '网络请求超时，请检查您的网络'
-    }
-
-    // 显示错误信息
-    if (!originalRequest._retry) {
-      ElMessage({
-        message: message,
-        type: 'error',
-        duration: 5 * 1000
-      })
-    }
-    
-    return Promise.reject(error)
+    // 2. 处理常规错误 (包含账号封禁 400)
+    return handleGeneralError(error)
   }
 )
+
+/**
+ * 核心：企业级通用错误处理函数
+ */
+function handleGeneralError(error) {
+  let message = '系统未知错误'
+  
+  if (error.response) {
+    const data = error.response.data
+    // 优先级 1：后端定义的 detail (如：账号已被封禁)
+    // 优先级 2：后端定义的 message
+    // 优先级 3：表单验证错误 (提取第一个错误)
+    if (data.detail) {
+      message = data.detail
+    } else if (data.message) {
+      message = data.message
+    } else if (typeof data === 'object') {
+      // 这里的逻辑能把 {"username": ["太长了"]} 这种错误转成文字
+      const firstKey = Object.keys(data)[0]
+      if (Array.isArray(data[firstKey])) {
+        message = `${firstKey}: ${data[firstKey][0]}`
+      }
+    }
+
+    // 403 权限不足处理
+    if (error.response.status === 403) {
+      message = '权限不足，拒绝访问'
+    }
+  } else if (error.message.includes('timeout')) {
+    message = '网络请求超时，请检查您的网络'
+  }
+
+  // 弹出错误提示
+  ElMessage({
+    message: message,
+    type: 'error',
+    duration: 5000
+  })
+
+  // 返回 rejected 状态，让 login.vue 进 catch
+  return Promise.reject(error)
+}
 
 export default service

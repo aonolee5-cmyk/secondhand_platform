@@ -94,58 +94,71 @@
 <script setup>
 import { ref, onMounted, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { Search, Plus, Shop, ArrowDown, ShoppingCart, ChatLineRound } from '@element-plus/icons-vue'
+import { Search, Plus, Shop, ArrowDown, ShoppingCart, ChatLineRound, Monitor } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import request from '@/utils/request'
-import { computed } from 'vue'
 
 const router = useRouter()
 const route = useRoute()
+
+// 状态变量
 const searchQuery = ref('')
 const isLogin = ref(false)
+const isAdmin = ref(false)
 const unreadTotal = ref(0)
 const username = ref('')
-const userRole = ref('')
-const isAdmin = ref(false)
 
-const checkUnread = async () => {
-  if (localStorage.getItem('token')) {
-    try {
-      const res = await request({ url: 'chat/history/list_recent_contacts/', method: 'get' })
-      unreadTotal.value = res.unread_total || 0
-    } catch (err) {
-      console.error('获取未读消息失败', err)
-    }
-  }
-}
-
-const checkLogin = () => {
+// 【唯一核心函数】统一更新用户所有状态
+const updateGlobalStatus = async () => {
   const token = localStorage.getItem('token')
   const storedName = localStorage.getItem('username')
-  const name = localStorage.getItem('username')
-  console.log('当前检测到的用户名:', name)
-  if (token && storedName) {
-    isLogin.value = true
-    username.value = storedName
-    // 判断是否为 admin
-    userRole.value = storedName === 'admin' ? 'admin' : 'user'
+  const isStaff = localStorage.getItem('is_staff') === 'true'
+
+  // 1. 判断登录状态
+  isLogin.value = !!token
+  username.value = storedName || ''
+
+  // 2. 判断管理员权限 (满足其一即可)
+  if (isLogin.value && storedName) {
+    const nameLower = storedName.toLowerCase().trim()
+    if (nameLower === 'admin' || nameLower === 'lee' || isStaff) {
+      isAdmin.value = true
+    } else {
+      isAdmin.value = false
+    }
   } else {
-    isLogin.value = false
-    userRole.value = ''
+    isAdmin.value = false
+  }
+
+  console.log(`[身份校验] 用户:${storedName} | 登录:${isLogin.value} | 管理员:${isAdmin.value}`)
+}
+
+// 检查未读消息
+const checkUnread = async () => {
+  if (!isLogin.value) return
+  try {
+    const res = await request({ url: 'chat/history/list_recent_contacts/', method: 'get' })
+    unreadTotal.value = res.unread_total || 0
+  } catch (err) {
+    console.error('获取未读消息失败', err)
   }
 }
 
+// 登出逻辑
+const handleLogout = () => {
+  localStorage.clear() // 企业级做法：直接清空，最干净
+  isLogin.value = false
+  isAdmin.value = false
+  ElMessage.success('已安全退出')
+  window.location.href = '/' // 强制刷新回首页
+}
 
-onMounted(() => {
-  checkLogin()
-  checkUnread()
-  setInterval(checkUnread, 10000) // 每10秒检查一次未读消息
-})
-
-watch(() => route.path, () => {
-  checkLogin()
-  if (isLogin.value) checkUnread()
-}, { immediate: true })
+// 搜索逻辑
+const handleSearch = () => {
+  const q = searchQuery.value.trim()
+  if (!q) return
+  router.push({ path: '/', query: { q: q } })
+}
 
 const goToPost = () => {
   if (!isLogin.value) {
@@ -156,55 +169,32 @@ const goToPost = () => {
   router.push('/post')
 }
 
-const handleLogout = () => {
-  localStorage.removeItem('token')
-  localStorage.removeItem('refresh_token')
-  isLogin.value = false
-  unreadTotal.value = 0  
-  ElMessage.success('已安全退出')
-  if (route.meta.requireAuth) {
-    router.push('/')
-  }
-}
-
-const handleSearch = () => {
-  const q = searchQuery.value.trim()
-  if (!q) return
-  if (route.query.q === q) return
-  router.push({ path: '/', query: { q: q } })
-}
-
-
-const initUserStatus = () => {
-  const token = localStorage.getItem('token')
-  const username = localStorage.getItem('username')
-  isLogin.value = !!token
-  isAdmin.value = (username === 'admin')
-}
-
+// --- 生命周期与监听 ---
 
 onMounted(() => {
-  // 你可以根据用户信息里的 username 或者 is_staff 字段来判断
-  // 临时方案：直接看 username
-  const username = localStorage.getItem('username') 
-  if (username === 'admin') {
-    userRole.value = 'admin'
+  updateGlobalStatus()
+  checkUnread()
+  // 每30秒检查一次未读（企业级建议不要太频繁，除非是长连接）
+  setInterval(checkUnread, 30000) 
+})
+
+// 监听路由变化：每次切页面都校准身份并检查权限
+watch(() => route.path, (newPath) => {
+  updateGlobalStatus()
+  
+  // 路由守卫拦截
+  if (newPath.startsWith('/admin') && !isAdmin.value) {
+    ElMessage.error('权限不足，禁止进入管理区域')
+    router.push('/')
   }
-})
+}, { immediate: true })
 
-watch (()=>route.path, ()=>{
-  initUserStatus()
-})
-
-onMounted (()=>{
-  initUserStatus()
-})
 </script>
-
 <style lang="scss">
 
-body {
+html, body {
   margin: 0;
+  padding: 0;
   font-family: "Helvetica Neue", Helvetica, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "微软雅黑", Arial, sans-serif;
 }
 

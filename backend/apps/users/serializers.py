@@ -2,6 +2,8 @@ from .models import Address, Report
 from rest_framework import serializers
 from django.contrib.auth import get_user_model
 from goods.models import Product, Category
+from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
+from django.contrib.auth import authenticate
 
 User = get_user_model()
 
@@ -63,3 +65,54 @@ class UserSerializer(serializers.ModelSerializer):
         model = User
         fields = ['id', 'username', 'nickname', 'mobile', 'avatar']
         read_only_fields = ['username', 'credit_score', 'is_verified']
+        
+
+class UserInfoSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = [
+            'id', 'username', 'nickname', 'mobile', 'avatar', 
+            'credit_score', 'is_verified', 'verify_status',
+            'is_staff'  # 【核心新增】添加 Django 自带的管理员标记字段
+        ]
+
+class MyTokenObtainPairSerializer(TokenObtainPairSerializer):
+    def validate(self, attrs):
+        data = super().validate(attrs)
+        # 把用户信息加到返回的 JSON 里面
+        data['username'] = self.user.username
+        data['is_staff'] = self.user.is_staff
+        data['id'] = self.user.id
+        return data
+    
+class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
+    def validate(self, attrs):
+        username = attrs.get("username")
+        password = attrs.get("password")
+
+        # 1. 手动检查用户是否存在
+        user = User.objects.filter(username=username).first()
+        
+        if user:
+            # 2. 如果用户存在但被封禁
+            if not user.is_active:
+                raise serializers.ValidationError({
+                    "detail": "您的账号已被系统封禁，请联系管理员处理！"
+                })
+            
+            # 3. 如果没被封禁，进行标准密码验证
+            authenticated_user = authenticate(username=username, password=password)
+            if not authenticated_user:
+                raise serializers.ValidationError({
+                    "detail": "用户名或密码错误"
+                })
+        else:
+            raise serializers.ValidationError({
+                "detail": "账号不存在"
+            })
+
+        # 4. 验证通过，获取 Token
+        data = super().validate(attrs)
+        data['username'] = self.user.username
+        data['is_staff'] = self.user.is_staff
+        return data

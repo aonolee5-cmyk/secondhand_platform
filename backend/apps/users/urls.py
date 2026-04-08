@@ -1,16 +1,22 @@
-from django.urls import path
+from django.urls import path, include
 from rest_framework_simplejwt.views import (
     TokenObtainPairView,
     TokenRefreshView,    
 )
-from .views import RealNameVerifyView, RegisterView, UserProfileView, AddressViewSet, ReportViewSet
+from .views import RealNameVerifyView, RegisterView, UserProfileView, AddressViewSet, ReportViewSet,MyTokenObtainPairView
+from .admin_views import AdminUserManagementViewSet
+from rest_framework.routers import DefaultRouter
+
+router = DefaultRouter()
+router.register(r'admin/users', AdminUserManagementViewSet, basename='admin-users')
 
 urlpatterns = [
+     path('', include(router.urls)),
     # 注册接口
     path('register/', RegisterView.as_view(), name='register'),
     
     # 登录接口
-    path('login/', TokenObtainPairView.as_view(), name='login'),
+    path('login/', MyTokenObtainPairView.as_view(), name='login'),
     
     # Token 刷新接口
     path('token/refresh/', TokenRefreshView.as_view(), 

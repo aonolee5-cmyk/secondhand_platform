@@ -176,7 +176,7 @@ REST_FRAMEWORK = {
         'rest_framework_simplejwt.authentication.JWTAuthentication', # 使用 JWT
     ),
     'DEFAULT_PERMISSION_CLASSES': (
-        'rest_framework.permissions.AllowAny', 
+        'rest_framework.permissions.IsAuthenticated', 
     ),
     'DEAULT_FILTER_BACKENDS': (
         'django_filters.rest_framework.DjangoFilterBackend',
