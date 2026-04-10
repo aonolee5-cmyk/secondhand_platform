@@ -37,13 +37,14 @@ DEBUG = True
 ALLOWED_HOSTS = []
 
 SIMPLE_JWT = {
-    'access_token_lifetime': timedelta(days=1),
-    'refresh_token_lifetime': timedelta(days=7),
-    'rotate_refresh_tokens': True,
-    'blacklist_after_rotation': True,
-    'algorithm': 'HS256',
+    'ACCESS_TOKEN_LIFETIME': timedelta(days=1),
+    'REFRESH_TOKEN_LIFETIME': timedelta(days=7),
+    'ROTATE_REFRESH_TOKENS': True,
+    'BLACKLIST_AFTER_ROTATION': True,
+    'ALGORITHM': 'HS256',
     'SIGNING_KEY': SECRET_KEY,
-    'auth_header_types': ('Bearer',),
+    'AUTH_HEADER_TYPES': ('Bearer',),
+    'AUTH_TOKEN_CLASSES': ('rest_framework_simplejwt.tokens.AccessToken',),
 }
 
 
@@ -58,6 +59,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'django_filters',
     'channels',
+    'rest_framework_simplejwt.token_blacklist',
     
     # 第三方库
     'rest_framework',

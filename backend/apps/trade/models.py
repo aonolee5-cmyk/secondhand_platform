@@ -63,5 +63,6 @@ class Review(models.Model):
     buyer_comment = models.TextField(verbose_name="评价内容")
     create_time = models.DateTimeField(auto_now_add=True)
 
+    additional_comment = models.TextField(null=True, blank=True, verbose_name="追加评价")
     class Meta:
         verbose_name = "订单评价" 

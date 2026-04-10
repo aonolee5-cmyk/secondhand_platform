@@ -1,486 +1,384 @@
 <template>
-  <div class="profile-container">
-    <el-row :gutter="25">
-      <!-- 用户卡片  -->
-      <el-col :span="8">
-        <el-card class="user-info-card" shadow="hover">
-          <div class="user-avatar-box">
-            <el-upload
-              class="avatar-uploader"
-              action=""
-              :show-file-list="false"
-              :http-request="handleAvatarUpload"
-              :before-upload="beforeAvatarUpload"
-            >
-              <div class="avatar-wrapper">
-                <el-avatar 
-                  :size="100" 
-                  :src="user.avatar ? 'http://127.0.0.1:8000' + user.avatar : 'https://cube.elemecdn.com/3/7c/3ea6beec64369c2642b92c6726f1epng.png'" 
-                />
-                <div class="avatar-mask">
-                  <el-icon><Camera /></el-icon>
-                  <span>修改头像</span>
-                </div>
-              </div>
-            </el-upload>
-
-            <div class="user-status-tags">
-              <el-tag :type="user.is_verified ? 'success' : 'info'" round size="small">
-                <el-icon><CircleCheck v-if="user.is_verified" /><Warning v-else /></el-icon>
-                {{ user.is_verified ? '身份已核验' : '未实名' }}
-              </el-tag>
-            </div>
+  <div class="profile-content">
+    <!-- 1. 顶部 Header 区 (闲鱼风格：大背景 + 悬浮信息) -->
+    <div class="user-header-banner">
+      <div class="user-info-box">
+        <el-upload
+          class="avatar-uploader"
+          action=""
+          :show-file-list="false"
+          :http-request="handleAvatarUpload"
+          :before-upload="beforeAvatarUpload"
+        >
+          <div class="big-avatar-wrapper">
+            <el-avatar 
+              :size="100" 
+              :src="fullAvatarUrl || 'https://cube.elemecdn.com/3/7c/3ea6beec64369c2642b92c6726f1epng.png'" 
+            />
+            <div class="avatar-edit-mask"><el-icon><Camera /></el-icon></div>
           </div>
+        </el-upload>
 
-          <div class="user-basic-info">
-            <h2 class="nickname">{{ user.nickname || user.username }}</h2>
-            <p class="bio">{{ user.bio || '暂无个性签名' }}</p>
+        <div class="text-info">
+          <h2 class="username">{{ user.nickname || user.username }}</h2>
+          <div class="status-tags">
+            <el-tag v-if="user.is_verified" type="success" size="small" round effect="dark">
+              <el-icon><CircleCheck /></el-icon> 身份已核验
+            </el-tag>
+            <el-tag v-else type="info" size="small" round effect="plain">未实名</el-tag>
+            <span class="bio-text">{{ user.bio || '还没有个性签名哦~' }}</span>
           </div>
-
-          <el-divider />
-
-          <!-- 信用展示-->
-          <div class="credit-section">
-            <div class="credit-header">
-              <span>平台信用评分</span>
-              <el-tooltip content="基于成交率、违约记录及评价加权计算" placement="top">
-                <el-icon><QuestionFilled /></el-icon>
-              </el-tooltip>
-            </div>
-            <div class="credit-value" :class="getCreditColor(user.credit_score)">
-              {{ user.credit_score }}
-            </div>
-            <div class="credit-level">信用等级：{{ getCreditLevel(user.credit_score) }}</div>
-          </div>
-        </el-card>
-      </el-col>
-
-      <!-- 功能管理区 -->
-      <el-col :span="16">
-        <el-tabs type="border-card" class="profile-tabs">
-          
-          <!-- 个人信息管理 -->
-          <el-tab-pane>
-            <template #label>
-              <span class="tab-label"><el-icon><User /></el-icon> 个人信息管理</span>
-            </template>
-            <el-form :model="user" label-width="100px" class="form-body">
-              <el-form-item label="登录账号">
-                <el-input v-model="user.username" disabled />
-                <span class="input-tip">账号为唯一标识，不可修改</span>
-              </el-form-item>
-              <el-form-item label="个性昵称">
-                <el-input v-model="user.nickname" placeholder="设置一个好听的昵称" />
-              </el-form-item>
-              <el-form-item label="联系手机">
-                <el-input v-model="user.mobile" placeholder="用于接收订单通知" />
-              </el-form-item>
-              <el-form-item label="个性签名">
-                <el-input v-model="user.bio" type="textarea" :rows="2" placeholder="介绍一下自己吧" />
-              </el-form-item>
-              <el-form-item>
-                <el-button type="primary" @click="handleUpdate">保存资料修改</el-button>
-              </el-form-item>
-            </el-form>
-          </el-tab-pane>
-
-          <!-- 实名认证 -->
-          <el-tab-pane>
-            <template #label>
-              <span class="tab-label"><el-icon><Postcard /></el-icon> 实名认证</span>
-            </template>
-  
-          <!-- 认证通过 ---->
-          <div v-if="user.verify_status === 2" class="verified-box">      
-            <el-result icon="success" title="身份核验已通过" :sub-title="'真实姓名：' + maskName(user.real_name)">
-               <template #extra>
-                <p class="security-info">您的身份信息已加密处理，平台严格保障隐私安全</p>
-                <el-tag type="success" effect="plain">已认证</el-tag>
-              </template>
-            </el-result>
-          </div>
-
-          <!--审核中-->
-          <div v-else-if="user.verify_status === 1" class="pending-box">
-            <el-result icon="warning" title="实名信息审核中" sub-title="管理员将在 24 小时内完成审核，请耐心等待">
-              <template #extra>
-                <el-button type="info" disabled>已提交审核</el-button>
-              </template>
-            </el-result>
-          </div>
-
-        <!-- 未认证/被驳回 -->
-        <div v-else class="unverified-box">
-          <el-alert 
-            v-if="user.verify_status === 3" 
-            title="认证被驳回：请检查信息是否真实有效并重新提交" 
-            type="error" 
-            show-icon 
-            style="margin-bottom: 20px" 
-          />
-          <el-alert title="实名认证须知" type="warning" show-icon :closable="false" style="margin-bottom: 25px">
-              实名认证通过后可提升账号权重及买家信任度，是发布商品的前提。
-          </el-alert>
-    
-          <!-- 【修改点：增加了 :rules="verifyRules"】 -->
-          <el-form :model="verifyForm" :rules="verifyRules" label-width="100px" ref="verifyFormRef">
-            <!-- 【修改点：增加了 prop="real_name" 才能让校验生效】 -->
-            <el-form-item label="真实姓名" prop="real_name">
-              <el-input v-model="verifyForm.real_name" placeholder="请输入身份证姓名" />
-            </el-form-item>
-            <!-- 【修改点：增加了 prop="id_card" 才能让校验生效】 -->
-            <el-form-item label="身份证号" prop="id_card">
-              <el-input v-model="verifyForm.id_card" placeholder="请输入18位二代身份证号" maxlength="18" />
-            </el-form-item>
-            <el-form-item>
-              <el-button type="success" @click="handleVerify" :loading="verifying">提交实名申请</el-button>
-            </el-form-item>
-          </el-form>
         </div>
-      </el-tab-pane>
+        
+        <div class="header-actions">
+          <el-button round class="edit-btn" @click="activeTab = 'settings'">
+             <el-icon><EditPen /></el-icon> 编辑资料
+          </el-button>
+        </div>
+      </div>
+    </div>
 
+    <!-- 2. 底部功能区 (Tab选项卡) -->
+    <div class="tabs-container">
+      <el-tabs v-model="activeTab" class="custom-tabs">
+        
+        <!-- 标签页：我的宝贝 -->
+        <el-tab-pane label="宝贝" name="goods">
+          <div v-loading="loadingProducts" class="goods-content">
+            
+            <!-- 情况 A: 有商品时，展示美观的卡片网格 -->
+            <el-row :gutter="20" v-if="myProducts.length > 0">
+              <el-col :span="8" v-for="item in myProducts" :key="item.id" style="margin-bottom: 20px">
+                <el-card :body-style="{ padding: '0px' }" class="mini-product-card" shadow="hover">
+                  <!-- 商品图片 -->
+                  <div class="image-container">
+                    <el-image 
+                      :src="'http://127.0.0.1:8000' + item.images[0]" 
+                      fit="cover" 
+                      class="prod-img"
+                    />
+                    <!-- 浮动状态标签：增加视觉高级感 -->
+                    <el-tag 
+                      class="status-tag" 
+                      :type="item.status === 'onsale' ? 'success' : 'info'" 
+                      effect="dark"
+                    >
+                      {{ item.status === 'onsale' ? '在售' : (item.status === 'audit' ? '审核中' : '已下架') }}
+                    </el-tag>
+                  </div>
 
-          <el-tab-pane label="地址管理">
-            <div style="margin-bottom: 20px;">
-              <el-button type="primary" :icon="Plus" @click="openAddressDialog">新增收货地址</el-button>
+                  <div style="padding: 10px">
+                    <div class="prod-title">{{ item.title }}</div>
+                    <div class="prod-footer">
+                      <span class="price">￥{{ item.price }}</span>
+                      <el-button link type="primary" @click="$router.push('/edit/' + item.id)">管理</el-button>
+                    </div>
+                  </div>
+                </el-card>
+              </el-col>
+            </el-row>
+
+            <!-- 情况 B: 真的没商品时 -->
+            <el-empty v-else description="您还没有发布过任何宝贝哦" :image-size="120">
+              <el-button type="primary" round @click="$router.push('/post')">去发布一个</el-button>
+            </el-empty>
+            
+          </div>
+        </el-tab-pane>
+
+        <!-- 标签页：信用及评价 (企业级信用大盘) -->
+        <el-tab-pane label="信用及评价" name="credit">
+          <div class="credit-card-dashboard">
+            <div class="credit-main">
+              <div class="score-num" :class="getCreditColor(user.credit_score)">{{ user.credit_score }}</div>
+              <div class="score-label">平台信用评分</div>
+              <el-rate :model-value="creditStar" disabled />
             </div>
+            <el-divider direction="vertical" />
+            <div class="credit-details">
+              <p>信用等级：<strong>{{ getCreditLevel(user.credit_score) }}</strong></p>
+              <p class="tip">评分基于成交率、评价权重及合规记录综合计算</p>
+            </div>
+          </div>
+        </el-tab-pane>
 
-            <el-table :data="addressesList" style="width: 100%"> 
-              <el-table-column prop="receiver" label="收货人" width="120" />
-              <el-table-column prop="mobile" label="手机号" width="130" />
-              <el-table-column label="收货地址">
-                <template #default="scope">
-                  {{ scope.row.region }} {{scope.row.detail}}
-                  <el-tag v-if="scope.row.is_default" size="small" type="danger" style="margin-left: 10px;">默认</el-tag>
-                </template>
-              </el-table-column>
-            <el-table-column label="操作" width="200">
-                <template #default="scope">
-                  <el-button link type="primary" v-if="!scope.row.is_default" @click="handleSetDefault(scope.row.id)">设为默认</el-button>
-                  <el-button link type="danger" @click="handleDeleteAddress(scope.row.id)">删除</el-button>
-                </template>
-              </el-table-column>
-            </el-table>
-
-            <el-dialog v-model="addressDialogVisible" title="新增收货地址" width="500px">
-              <el-form :model="addressForm" label-width="80px">
-                <el-form-item label="收货人">
-                  <el-input v-model="addressForm.receiver" placeholder="请输入收货人姓名" />
-                </el-form-item>
-                <el-form-item label="手机号">
-                  <el-input v-model="addressForm.mobile" placeholder="请输入收货人手机号" />
-                </el-form-item>
-                <el-form-item label="所在地区">
-                  <el-cascader 
-                    v-model="addressForm.regionCode" 
-                    :options="regionData" 
-                    placeholder="请选择所在地区"
-                    style="width: 100%;"
-                  />
-                </el-form-item>
-                <el-form-item label="详细地址">
-                  <el-input v-model="addressForm.detail" placeholder="请输入详细地址信息" />
-                </el-form-item>
-                <el-form-item label="默认地址">
-                  <el-switch v-model="addressForm.is_default" />
-                </el-form-item>
-              </el-form>
-              <template #footer>
-                  <el-button @click="addressDialogVisible = false">取消</el-button>
-                  <el-button type="primary" @click="submitAddress">确定</el-button>
+        <!-- 标签页：收货地址 (保留原有逻辑) -->
+        <el-tab-pane label="地址管理" name="address">
+          <div class="address-header">
+            <el-button type="primary" :icon="Plus" @click="openAddressDialog">新增收货地址</el-button>
+          </div>
+          <el-table :data="addressesList" style="width: 100%" class="modern-table"> 
+            <el-table-column prop="receiver" label="收货人" width="120" />
+            <el-table-column prop="mobile" label="手机号" width="130" />
+            <el-table-column label="详细地址">
+              <template #default="scope">
+                {{ scope.row.region }} {{scope.row.detail}}
+                <el-tag v-if="scope.row.is_default" size="small" type="danger" effect="plain" style="margin-left: 10px;">默认</el-tag>
               </template>
-            </el-dialog>
-          </el-tab-pane>
+            </el-table-column>
+            <el-table-column label="操作" width="180" align="right">
+              <template #default="scope">
+                <el-button link type="primary" v-if="!scope.row.is_default" @click="handleSetDefault(scope.row.id)">设为默认</el-button>
+                <el-button link type="danger" @click="handleDeleteAddress(scope.row.id)">删除</el-button>
+              </template>
+            </el-table-column>
+          </el-table>
+        </el-tab-pane>
 
-        </el-tabs>
-      </el-col>
-    </el-row>
+        <!-- 标签页：账号设置 (包含个人资料修改 + 实名认证) -->
+        <el-tab-pane label="账号与安全" name="settings">
+          <el-collapse v-model="activeCollapse">
+            <el-collapse-item title="基本资料修改" name="1">
+              <el-form :model="user" label-width="100px" style="max-width: 500px">
+                <el-form-item label="个性昵称"><el-input v-model="user.nickname" /></el-form-item>
+                <el-form-item label="个性签名"><el-input v-model="user.bio" type="textarea" /></el-form-item>
+                <el-form-item><el-button type="primary" @click="handleUpdate">保存资料</el-button></el-form-item>
+              </el-form>
+            </el-collapse-item>
+
+            <el-collapse-item title="实名身份认证" name="2">
+              <div v-if="user.verify_status === 2">
+                <el-result icon="success" title="已通过实名认证" :sub-title="'真实姓名：' + maskName(user.real_name)">
+                  <template #extra><el-tag type="success">认证终身有效</el-tag></template>
+                </el-result>
+              </div>
+              <div v-else-if="user.verify_status === 1">
+                <el-result icon="warning" title="审核中" sub-title="预计 24 小时内完成" />
+              </div>
+              <div v-else>
+                <el-form :model="verifyForm" :rules="verifyRules" ref="verifyFormRef" label-width="100px">
+                  <el-form-item label="真实姓名" prop="real_name"><el-input v-model="verifyForm.real_name" /></el-form-item>
+                  <el-form-item label="身份证号" prop="id_card"><el-input v-model="verifyForm.id_card" /></el-form-item>
+                  <el-form-item><el-button type="success" @click="handleVerify" :loading="verifying">提交申请</el-button></el-form-item>
+                </el-form>
+              </div>
+            </el-collapse-item>
+          </el-collapse>
+        </el-tab-pane>
+      </el-tabs>
+    </div>
+
+    <!-- 地址弹窗 (保留原有逻辑) -->
+    <el-dialog v-model="addressDialogVisible" title="新增收货地址" width="500px">
+      <el-form :model="addressForm" label-width="80px">
+        <el-form-item label="收货人"><el-input v-model="addressForm.receiver" /></el-form-item>
+        <el-form-item label="手机号"><el-input v-model="addressForm.mobile" /></el-form-item>
+        <el-form-item label="所在地区">
+          <el-cascader v-model="addressForm.regionCode" :options="regionData" style="width: 100%;" />
+        </el-form-item>
+        <el-form-item label="详细地址"><el-input v-model="addressForm.detail" /></el-form-item>
+        <el-form-item label="默认地址"><el-switch v-model="addressForm.is_default" /></el-form-item>
+      </el-form>
+      <template #footer>
+          <el-button @click="addressDialogVisible = false">取消</el-button>
+          <el-button type="primary" @click="submitAddress">确定保存</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted, reactive } from 'vue'
+import { ref, onMounted, reactive, computed } from 'vue'
 import { 
   getProfile, updateProfile, updateAvatar, submitVerify, 
   getAddresses, addAddress, deleteAddress, setDefaultAddress 
 } from '@/api/user'
 import { ElMessage } from 'element-plus'
-import { 
-  User, Postcard, Location, QuestionFilled, 
-  CircleCheck, Warning, Camera, Plus 
-} from '@element-plus/icons-vue'
+import { Camera, Plus, CircleCheck, EditPen } from '@element-plus/icons-vue'
 import { regionData, codeToText } from 'element-china-area-data'
+import { getMyProducts } from '@/api/goods' 
 
-// --- 1. 用户基础数据 ---
-const user = ref({
-  username: '',
-  nickname: '',
-  mobile: '',
-  bio: '',
-  avatar: '',
-  credit_score: 0,
-  is_verified: false,
-  verify_status: 0, // 0未认证，1审核中，2已认证，3审核驳回
-  real_name: '', 
-  id_card: ''
+// --- 状态数据 ---
+const user = ref({ credit_score: 0, avatar:'', nickname:'', mobile:'', bio:'', verify_status:''})
+const activeTab = ref('goods')
+const activeCollapse = ref(['1', '2'])
+const addressesList = ref([])
+const addressDialogVisible = ref(false)
+const verifying = ref(false)
+const verifyFormRef = ref(null)
+const creditStar = computed(() => user.value.credit_score / 20)
+const myProducts = ref([])
+const verifyForm = reactive({ real_name: '', id_card: '' })
+const addressForm = reactive({ receiver: '', mobile: '', regionCode:[], detail: '', is_default: false })
+const loadingProducts = ref(false)
+
+const loadAddresses = async () => { 
+  const res = await getAddresses()
+  addressesList.value = res.results || res 
+}
+onMounted(() => { 
+  loadProfile()
+  loadAddresses() 
 })
 
-// --- 2. 生命周期与数据加载 (合并冗余代码) ---
+const handleUpdate = async () => {
+  await updateProfile({ 
+    nickname: user.value.nickname, 
+    mobile: user.value.mobile, 
+    bio: user.value.bio })
+  ElMessage.success('资料保存成功'); loadProfile() 
+}
+
+
+const fullAvatarUrl = computed(() => {
+  if (!user.value.avatar) return ''
+  // 如果后端直接返回了完整 http 路径则直接用
+  if (user.value.avatar.startsWith('http')) return user.value.avatar
+  // 否则拼接后端服务器地址
+  return `http://127.0.0.1:8000${user.value.avatar}`
+})
+
+
+// --- 逻辑函数 ---
 const loadProfile = async () => { 
   try {
     const res = await getProfile()
-    user.value = res
-  } catch (error) {
-    console.error('获取用户资料失败:', error)
+    // 🚀 核心修复 2：确保赋值时能够触发响应式更新
+    user.value = { ...res } 
+    console.log("用户信息加载成功:", user.value)
+  } catch (err) {
+    console.error("加载失败", err)
   }
 }
 
-const loadAddresses = async () => {
-   try {
-     const res = await getAddresses()
-     addressesList.value = res.results || res
-   } catch (error) {
-     console.error('获取地址列表失败:', error)
-   }
-}
-
-onMounted(() => {
-  loadProfile()
-  loadAddresses()
-})
-
-// --- 3. 个人信息与头像修改 ---
-const handleUpdate = async () => {
-  await updateProfile({ 
-    nickname: user.value.nickname,
-    mobile: user.value.mobile,
-    bio: user.value.bio 
-  })
-  ElMessage.success('个人资料保存成功')
-  loadProfile() 
-}
-
-const beforeAvatarUpload = (rawFile) => {
-  if (rawFile.type !== 'image/jpeg' && rawFile.type !== 'image/png') {
-    ElMessage.error('头像必须是 JPG/PNG 格式!')
-    return false
-  } else if (rawFile.size / 1024 / 1024 > 2) {
-    ElMessage.error('图片大小不能超过 2MB!')
-    return false
-  }
-  return true
-}
-
+// 头像上传逻辑
 const handleAvatarUpload = async (options) => { 
   const formData = new FormData()
   formData.append('avatar', options.file)
   try {
-    await updateAvatar(formData)
-    ElMessage.success('头像更新成功')
-    loadProfile() 
-  } catch (error) {
-    console.error(error)
+    const res = await updateAvatar(formData)
+    ElMessage.success('头像已更新')
+    await loadProfile() 
+  } catch (err) {
+    ElMessage.error('头像上传失败')
   }
 }
 
-// 信用相关计算
-const getCreditColor = (score) => {
-  if (score >= 90) return 'text-success'
-  if (score >= 70) return 'text-primary'
-  return 'text-danger'
-}
-const getCreditLevel = (score) => {
-  if (score >= 90) return '极好'
-  if (score >= 70) return '良好'
-  return '一般'
+const beforeAvatarUpload = (file) => {
+  const isJPG = file.type === 'image/jpeg' || file.type === 'image/png'
+  if (!isJPG) ElMessage.error('仅支持JPG/PNG')
+  return isJPG
 }
 
-// --- 4. 实名认证核心逻辑 (重点修复区域) ---
-const verifying = ref(false)
-const verifyFormRef = ref(null) // 【修复】必须定义 ref 才能触发表单校验
-const verifyForm = reactive({
-  real_name: '',
-  id_card: '',
-})
-
-// 【新增】严格的正则表达式校验规则
 const verifyRules = {
-  real_name:[
-    { required: true, message: '请输入真实姓名', trigger: 'blur' },
-    { pattern: /^[\u4e00-\u9fa5]{2,10}$/, message: '姓名必须是汉字', trigger: 'blur' }
-  ],
-  id_card:[
-    { required: true, message: '请输入身份证号', trigger: 'blur' },
-    { 
-      pattern: /^[1-9]\d{5}(18|19|20)\d{2}((0[1-9])|(1[0-2]))(([0-2][1-9])|10|20|30|31)\d{3}[0-9Xx]$/, 
-      message: '请输入正确的18位二代身份证号码', 
-      trigger: 'blur' 
-    }
-  ]
+  real_name: [{ required: true, message: '姓名必填', trigger: 'blur' }, { pattern: /^[\u4e00-\u9fa5]{2,10}$/, message: '请输入中文姓名' }],
+  id_card: [{ required: true, message: '身份证必填', trigger: 'blur' }, { pattern: /^[1-9]\d{5}(18|19|20)\d{2}((0[1-9])|(1[0-2]))(([0-2][1-9])|10|20|30|31)\d{3}[0-9Xx]$/, message: '格式错误' }]
 }
 
-const maskName = (name) => {
-  if (!name) return ''
-  return name.length > 2 ? name.charAt(0) + '*' + name.charAt(name.length - 1) : name.charAt(0) + '*'
-}
-
-// 【修复】改用 Form.validate 触发正则校验
 const handleVerify = () => {
-  if (!verifyFormRef.value) return
-  
   verifyFormRef.value.validate(async (valid) => {
-    if (valid) {
-      verifying.value = true
-      try {
-        await submitVerify(verifyForm)
-        ElMessage.success('认证信息提交成功，请等待审核')
-        user.value.verify_status = 1 // 强制改变前端状态，界面瞬间切换为“审核中”
-        loadProfile() // 后台刷新数据
-      } catch (error) {
-        console.error(error)
-      } finally {
-        verifying.value = false
-      }
-    } else {
-      ElMessage.error('请检查标红的信息是否有误')
-    }
+    if (!valid) return
+    verifying.value = true
+    try {
+      await submitVerify(verifyForm)
+      ElMessage.success('已提交申请')
+      user.value.verify_status = 1
+    } finally { verifying.value = false }
   })
-}
-
-// --- 5. 地址管理逻辑 (修复级联和大小写Bug) ---
-const regionOptions = regionData
-const addressesList = ref([]) 
-const addressDialogVisible = ref(false)
-const addressForm = reactive({
-  receiver: '',
-  mobile: '',
-  regionCode:[],
-  detail: '',
-  is_default: false, // 【修复】统一改为小写
-})
-
-const openAddressDialog = () => {
-  Object.assign(addressForm, { 
-    receiver: '',
-    mobile: '', 
-    regionCode:[], // 【修复】级联选择器需要置空数组，而不是空字符串
-    detail: '', 
-    is_default: false 
-  })
-  addressDialogVisible.value = true
 }
 
 const submitAddress = async () => {
-  if (addressForm.regionCode.length === 0) {
-    ElMessage.warning('请选择省市区')
-    return
-  }
-
-  // 级联代码转换为文字
   const regionText = addressForm.regionCode.map(code => codeToText[code]).join(' ')
+  await addAddress({ ...addressForm, region: regionText })
+  addressDialogVisible.value = false; loadAddresses()
+}
 
-  const submitData = {
-    receiver: addressForm.receiver,
-    mobile: addressForm.mobile,
-    region: regionText,
-    detail: addressForm.detail,
-    is_default: addressForm.is_default
-  }
+const handleDeleteAddress = async (id) => { await deleteAddress(id); loadAddresses() }
+const handleSetDefault = async (id) => { await setDefaultAddress(id); loadAddresses() }
 
+const maskName = (n) => n ? n[0] + '*'.repeat(n.length - 1) : ''
+const getCreditColor = (s) => s >= 90 ? 'text-success' : (s >= 70 ? 'text-primary' : 'text-danger')
+const getCreditLevel = (s) => s >= 90 ? '极好' : (s >= 70 ? '良好' : '一般')
+const openAddressDialog = () => { Object.assign(addressForm, { receiver: '', mobile: '', regionCode:[], detail: '', is_default: false }); addressDialogVisible.value = true }
+const initData = async () => {
   try {
-    await addAddress(submitData)
-    ElMessage.success('地址添加成功')
-    addressDialogVisible.value = false
-    loadAddresses()
-  } catch (error) {
-    console.error('地址提交失败', error)
+    // 1. 获取用户信息
+    user.value = await getProfile()
+    
+    // 2. 获取该用户的商品列表
+    loadingProducts.value = true
+    const res = await getMyProducts()
+    // 注意处理分页返回的数据结构
+    myProducts.value = res.results || res
+  } catch (err) {
+    console.error('数据加载失败', err)
+  } finally {
+    loadingProducts.value = false
   }
 }
 
-const handleDeleteAddress = async (id) => {
-  await deleteAddress(id)
-  ElMessage.success('已删除')
-  loadAddresses()
-}
+onMounted(initData)
 
-const handleSetDefault = async (id) => {
-  await setDefaultAddress(id)
-  ElMessage.success('已设为默认地址')
-  loadAddresses()
-}
 </script>
 
 <style scoped lang="scss">
-.profile-container { padding: 40px; max-width: 1100px; margin: 0 auto; }
-
-.user-avatar-box {
-  .avatar-uploader {
-    cursor: pointer;
-    .avatar-wrapper {
-      position: relative;
-      border-radius: 50%;
-      overflow: hidden;
-      width: 100px;
-      height: 100px;
-      &:hover .avatar-mask {
-        opacity: 1;
-      }
-    }
-    .avatar-mask {
-      position: absolute;
-      top: 0; left: 0; width: 100%; height: 100%;
-      background: rgba(0, 0, 0, 0.4);
-      color: white;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      font-size: 12px;
-      opacity: 0;
-      transition: opacity 0.3s;
-      gap: 4px;
-    }
-  }
+.profile-content {
+  background: #fff;
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.05);
 }
 
-.user-info-card {
-  border-radius: 12px;
-  .user-avatar-box {
-    margin-top: 20px;
+.user-header-banner {
+  height: 200px;
+  background: linear-gradient(135deg, #e0eafc 0%, #cfdef3 100%);
+  position: relative;
+  .user-info-box {
+    position: absolute;
+    bottom: -40px;
+    left: 40px;
+    right: 40px;
     display: flex;
-    flex-direction: column;
-    align-items: center;
-    .user-status-tags { margin-top: 12px; }
+    align-items: flex-end;
+    
+    .big-avatar-wrapper {
+      position: relative;
+      cursor: pointer;
+      .big-avatar { border: 4px solid #fff; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+      .avatar-edit-mask {
+        position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+        background: rgba(0,0,0,0.3); border-radius: 50%; opacity: 0;
+        display: flex; align-items: center; justify-content: center; color: #fff; font-size: 20px;
+        transition: 0.3s;
+      }
+      &:hover .avatar-edit-mask { opacity: 1; }
+    }
+
+    .text-info {
+      margin-left: 20px;
+      margin-bottom: 45px;
+      .username { font-size: 26px; font-weight: bold; margin: 0 0 10px; color: #333; }
+      .status-tags { display: flex; align-items: center; gap: 10px; .bio-text { font-size: 13px; color: #666; } }
+    }
+
+    .header-actions { margin-left: auto; margin-bottom: 45px; .edit-btn { background: #333; color: #fff; border: none; } }
   }
-  .user-basic-info {
+}
+
+.tabs-container {
+  margin-top: 60px;
+  padding: 0 40px 40px;
+  :deep(.custom-tabs) {
+    .el-tabs__item { font-size: 16px; font-weight: bold; height: 50px; }
+    .el-tabs__active-bar { background-color: #ffda00; height: 4px; }
+  }
+}
+
+.credit-card-dashboard {
+  display: flex;
+  align-items: center;
+  background: #f8faff;
+  padding: 30px;
+  border-radius: 12px;
+  .credit-main {
     text-align: center;
-    margin-top: 15px;
-    .nickname { margin: 0; font-size: 20px; color: #303133; }
-    .bio { color: #909399; font-size: 13px; margin-top: 8px; }
+    padding-right: 40px;
+    .score-num { font-size: 48px; font-weight: 800; line-height: 1; margin-bottom: 10px; }
+    .score-label { font-size: 12px; color: #999; margin-bottom: 5px; }
   }
+  .credit-details { padding-left: 40px; p { margin: 5px 0; color: #444; } .tip { font-size: 12px; color: #999; } }
 }
 
-.credit-section {
-  text-align: center;
-  padding: 10px 0;
-  .credit-header {
-    font-size: 12px; color: #999;
-    display: flex; align-items: center; justify-content: center; gap: 4px;
-  }
-  .credit-value { font-size: 36px; font-weight: bold; margin: 8px 0; }
-  .credit-level { font-size: 12px; color: #666; }
-}
-
-.profile-tabs { border-radius: 12px; min-height: 480px; }
-.tab-label { display: flex; align-items: center; gap: 8px; }
-.form-body { padding: 20px 10px; }
-.input-tip { font-size: 12px; color: #999; margin-left: 10px; }
-.verified-box { padding: 40px 0; }
-.security-info { font-size: 12px; color: #999; }
-.unverified-box { padding: 20px; }
-
-/* 颜色辅助类 */
-.text-success { color: #67C23A; }
-.text-primary { color: #409EFF; }
-.text-danger { color: #F56C6C; }
+.modern-table { margin-top: 15px; --el-table-header-bg-color: #f5f7fa; }
+.text-success { color: #67C23A; } .text-primary { color: #409EFF; } .text-danger { color: #F56C6C; }
 </style>

@@ -15,6 +15,8 @@ from rest_framework import status
 from rest_framework_simplejwt.views import TokenObtainPairView
 from .serializers import MyTokenObtainPairSerializer
 from .serializers import CustomTokenObtainPairSerializer
+from django.contrib.auth.hashers import check_password
+
 
 User = get_user_model()
 
@@ -113,3 +115,49 @@ class ReportViewSet(viewsets.ModelViewSet):
 
 class MyTokenObtainPairView(TokenObtainPairView):
     serializer_class = CustomTokenObtainPairSerializer
+
+
+class ChangePasswordView(APIView):
+    """
+    修改密码接口
+    """
+    def post(self, request):
+        user = request.user
+        old_password = request.data.get('old_password')
+        new_password = request.data.get('new_password')
+        
+        # 1. 校验旧密码
+        if not user.check_password(old_password):
+            return Response({'detail': '旧密码输入错误'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        # 2. 校验新旧密码是否一致
+        if old_password == new_password:
+            return Response({'detail': '新密码不能与旧密码相同'}, status=status.HTTP_400_BAD_REQUEST)
+            
+        # 3. 设置新密码并保存
+        user.set_password(new_password)
+        user.save()
+        
+        return Response({'detail': '密码修改成功，请重新登录'})
+    
+class ChangeMobileView(APIView):
+    """
+    修改手机号接口
+    """
+    def post(self, request):
+        user = request.user
+        new_mobile = request.data.get('new_mobile')
+        
+        # 1. 基础校验：非空
+        if not new_mobile:
+            return Response({'detail': '新手机号不能为空'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        # 2. 唯一性校验：确保新号码没被别人注册过
+        if User.objects.filter(mobile=new_mobile).exclude(id=user.id).exists():
+            return Response({'detail': '该手机号已被其他账号绑定'}, status=status.HTTP_400_BAD_REQUEST)
+            
+        # 3. 保存
+        user.mobile = new_mobile
+        user.save()
+        
+        return Response({'detail': '手机号修改成功', 'mobile': new_mobile})

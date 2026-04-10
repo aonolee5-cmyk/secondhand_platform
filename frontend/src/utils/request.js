@@ -7,7 +7,10 @@ const service = axios.create({
   timeout: 60000
 })
 
-// --- 请求拦截器 (你代码里好像没发这部分，补上) ---
+let isRefreshing = false
+let requestsQueue = []
+
+// --- 请求拦截器 ---
 service.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('token')
@@ -23,81 +26,100 @@ service.interceptors.request.use(
 service.interceptors.response.use(
   (response) => response.data,
   async (error) => {
-    const originalRequest = error.config
+    const { config, response } = error
     
-    // 1. 处理 401 身份过期 (自动无感刷新 Token)
-    if (error.response && error.response.status === 401 && !originalRequest._retry) {
-      // 如果是登录接口报 401，说明密码错或账号封禁，直接跳过刷新逻辑
-      if (originalRequest.url.includes('/users/login/')) {
+    // 🚀 处理 401 身份过期
+    if (response && response.status === 401) {
+      // 如果是登录接口报 401，说明密码错或账号封禁，直接报错
+      if (config.url.includes('/users/login/')) {
         return handleGeneralError(error)
       }
 
-      originalRequest._retry = true
+      // 如果正在刷新中，将当前请求存入队列，等待刷新完成后重发
+      if (isRefreshing) {
+        return new Promise((resolve) => {
+          requestsQueue.push((newToken) => {
+            config.headers['Authorization'] = `Bearer ${newToken}`
+            resolve(service(config))
+          })
+        })
+      }
+
+      // 开始刷新逻辑
+      isRefreshing = true
       const refreshToken = localStorage.getItem('refresh_token')
       
       if (refreshToken) {
         try {
-          // 使用相对路径，走 Vite 代理
+          // 注意：这里使用原生 axios 避免进入 service 的拦截器死循环
           const res = await axios.post('/api/users/token/refresh/', { refresh: refreshToken })
-          const newAccessToken = res.data.access
-          localStorage.setItem('token', newAccessToken)
+          const newToken = res.data.access
           
-          // 重试原始请求
-          originalRequest.headers['Authorization'] = `Bearer ${newAccessToken}`
-          return service(originalRequest)
+          localStorage.setItem('token', newToken)
+          
+          // 🚀 核心：执行队列中所有的请求
+          requestsQueue.forEach((callback) => callback(newToken))
+          requestsQueue = [] // 清空队列
+          
+          // 执行当前请求
+          config.headers['Authorization'] = `Bearer ${newToken}`
+          return service(config)
         } catch (refreshError) {
-          // 刷新令牌也失效了，强制登出
+          // 刷新失败（Refresh Token 也过期了），彻底清除状态并跳回登录
+          requestsQueue = []
           localStorage.clear()
-          window.location.href = '/login'
+          // 加上标记防止循环跳转
+          if (!window.location.pathname.includes('/login')) {
+            window.location.href = '/login'
+          }
           return Promise.reject(refreshError)
+        } finally {
+          isRefreshing = false
         }
+      } else {
+        // 没有 refresh_token，直接去登录
+        localStorage.clear()
+        // window.location.href = '/login'
       }
     }
 
-    // 2. 处理常规错误 (包含账号封禁 400)
+    // 2. 处理常规错误 (400 封禁, 403 权限不足, 500 服务器错误)
     return handleGeneralError(error)
   }
 )
 
 /**
- * 核心：企业级通用错误处理函数
+ * 核心：通用错误提示处理
  */
 function handleGeneralError(error) {
+  // 🚀 防抖处理：如果已经在刷新或跳转中，不弹出多余的错误提示
+  if (isRefreshing) return Promise.reject(error)
+
   let message = '系统未知错误'
-  
   if (error.response) {
     const data = error.response.data
-    // 优先级 1：后端定义的 detail (如：账号已被封禁)
-    // 优先级 2：后端定义的 message
-    // 优先级 3：表单验证错误 (提取第一个错误)
-    if (data.detail) {
-      message = data.detail
-    } else if (data.message) {
-      message = data.message
-    } else if (typeof data === 'object') {
-      // 这里的逻辑能把 {"username": ["太长了"]} 这种错误转成文字
+    message = data.detail || data.message || message
+    
+    // 处理 Django 的校验错误 {"username": ["该字段必填"]}
+    if (typeof data === 'object' && !data.detail && !data.message) {
       const firstKey = Object.keys(data)[0]
       if (Array.isArray(data[firstKey])) {
-        message = `${firstKey}: ${data[firstKey][0]}`
+        message = `${data[firstKey][0]}`
       }
     }
-
-    // 403 权限不足处理
-    if (error.response.status === 403) {
-      message = '权限不足，拒绝访问'
-    }
-  } else if (error.message.includes('timeout')) {
-    message = '网络请求超时，请检查您的网络'
   }
 
-  // 弹出错误提示
-  ElMessage({
-    message: message,
-    type: 'error',
-    duration: 5000
-  })
+  // 避免登录页重复弹出消息
+  if (!window.isMessageShowing) {
+    window.isMessageShowing = true
+    ElMessage({
+      message: message,
+      type: 'error',
+      duration: 3000,
+      onClose: () => { window.isMessageShowing = false }
+    })
+  }
 
-  // 返回 rejected 状态，让 login.vue 进 catch
   return Promise.reject(error)
 }
 

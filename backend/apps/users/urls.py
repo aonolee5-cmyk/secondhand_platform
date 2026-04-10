@@ -3,7 +3,7 @@ from rest_framework_simplejwt.views import (
     TokenObtainPairView,
     TokenRefreshView,    
 )
-from .views import RealNameVerifyView, RegisterView, UserProfileView, AddressViewSet, ReportViewSet,MyTokenObtainPairView
+from .views import RealNameVerifyView, RegisterView, UserProfileView, AddressViewSet, ReportViewSet,MyTokenObtainPairView, ChangePasswordView, ChangeMobileView
 from .admin_views import AdminUserManagementViewSet
 from rest_framework.routers import DefaultRouter
 
@@ -37,4 +37,8 @@ urlpatterns = [
     path('verify/', RealNameVerifyView.as_view(), name='real_name_verify'),
     # 举报
     path('reports/', ReportViewSet.as_view({'post': 'create'}), name='report_create'),
+    # 修改密码
+    path('change-password/', ChangePasswordView.as_view()),
+    # 修改手机号
+    path('change-mobile/', ChangeMobileView.as_view()),
 ]

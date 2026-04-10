@@ -38,9 +38,6 @@
                 {{ creditLevel.text }} ({{ product.owner_credit || 100 }})
               </el-tag>
             </div>
-            <div class="chat-btn-mini">
-               <el-button type="primary" size="small" plain icon="ChatDotRound">私聊</el-button>
-            </div>
           </div>
 
           <p class="desc">{{ product.desc }}</p>
@@ -127,9 +124,8 @@ import {
   StarFilled,
   Warning 
 } from '@element-plus/icons-vue'
-
 import {createOrder} from "@/api/trade";
-
+import request from '@/utils/request'
 
 const route = useRoute()
 const router = useRouter()
@@ -168,11 +164,33 @@ const creditLevel = computed(() => {
 })
 
 // 收藏逻辑
-const handleFavorite = () => {
-  isFavorite.value = !isFavorite.value
-  ElMessage.success(isFavorite.value ? '已加入收藏夹' : '已取消收藏')
+const handleFavorite = async () => {
+  if (!localStorage.getItem('token')) {
+    ElMessage.warning('请先登录后再收藏')
+    router.push('/login')
+    return
 }
 
+try {
+    if (isFavorite.value) {
+      // 💔 如果已收藏，执行取消收藏（这里逻辑根据你的后端设计，通常是 DELETE）
+      // 简单起见，如果后端没写一键切换接口，我们就调删除接口
+      // 你需要先获取该收藏记录的 ID，或者后端提供根据 product_id 删除的接口
+      ElMessage.info('取消收藏功能开发中，请在收藏夹统一管理')
+    } else {
+      // ❤️ 执行收藏
+      await request({ 
+        url: '/trade/favorites/', 
+        method: 'post', 
+        data: { product: product.value.id } 
+      })
+      isFavorite.value = true
+      ElMessage.success('已加入收藏夹')
+    }
+  } catch (err) {
+    console.error(err)
+  }
+}
 // 举报逻辑
 const reportVisible = ref(false)
 const reportLoading = ref(false)
@@ -265,6 +283,7 @@ onMounted(async () => {
   const id = route.params.id
   const res = await getProductDetail(id)
   product.value = res
+  isFavorite.value = res.is_favorited
 })
 </script>
 

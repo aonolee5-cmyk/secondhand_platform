@@ -23,11 +23,15 @@ class ProductViewSet(viewsets.ModelViewSet):
     queryset = Product.objects.filter(status='onsale')
     serializer_class = ProductSerializer
     # 设置游客只读，登录可操作
-    permission_classes = [permissions.IsAuthenticatedOrReadOnly]
-    filter_backends = [filters.SearchFilter, DjangoFilterBackend]
+    permission_classes = [IsAuthenticatedOrReadOnly]
+    filter_backends = [filters.SearchFilter, DjangoFilterBackend, filters.OrderingFilter]
     search_fields = ['title', 'desc']
-    filterset_fields = ['category']
+    filterset_fields = {'category':['exact'],
+                        'price':['gte', 'lte'],
+    }
 
+    ordering_fields = ['price', 'create_time', 'browse_count']
+    ordering = ['-create_time']
     def get_queryset(self):
         """
         商品列表查询集

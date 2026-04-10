@@ -6,12 +6,15 @@ from rest_framework import viewsets, status, permissions
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
-
-from .models import CartItem, Order, Review
-from .serializers import CartSerializer, OrderSerializer, ReviewSerializer
+from .models import CartItem, Order, Review, Favorite
+from .serializers import CartSerializer, OrderSerializer, ReviewSerializer, FavoriteSerializer
 from goods.models import Product
+from datetime import datetime
 
 class OrderViewSet(viewsets.ModelViewSet):
+    """
+    订单视图
+    """
     queryset = Order.objects.all()
     serializer_class = OrderSerializer
     permission_classes = [IsAuthenticated] 
@@ -131,23 +134,61 @@ class OrderViewSet(viewsets.ModelViewSet):
         order.status = 'arbitrating'
         order.save()
         return Response({'status': '已申请客服介入，请等待平台进行处理'})
+    
+    @action(detail=True, methods=['post'])
+    def receive(self, request, pk=None):
+        """买家确认收货"""
+        order = self.get_object()
+        
+        # 安全检查：只有买家能点收货
+        if order.buyer != request.user:
+            return Response({'detail': '无权操作'}, status=403)
+        
+        # 逻辑检查：只有已发货（shipped）或已支付（paid，防止卖家忘了点发货）的订单能收货
+        if order.status not in ['paid', 'shipped']:
+            return Response({'detail': '当前订单状态无需确认收货'}, status=400)
+            
+        # 变更状态为交易完成
+        order.status = 'received'
+        order.save()
+        
+        return Response({'status': '已确认收货，交易完成'})
 
 class ReviewViewSet(viewsets.ModelViewSet):
+    """
+    评论视图
+    """
     queryset = Review.objects.all()
     serializer_class = ReviewSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated]
 
+    @transaction.atomic  # 🚀 亮点1：开启事务，确保评价存入和扣分操作要么同时成功，要么同时失败
     def perform_create(self, serializer):
-        # 保存评价
-        review = serializer.save()
-    
-        # 核心逻辑：更新卖家信用分
-        # 算法：5星+2分，4星+1分，3星不加，2星-5分，1星-10分
-        order = review.order
+        # 1. 提取订单数据
+        order = serializer.validated_data.get('order')
+        
+        # 🛡️ 亮点2：安全性校验（越权检查）
+        # 必须确保：当前登录的用户 是 订单的买家，否则任何人都能随便给别人评价
+        if order.buyer != self.request.user:
+            raise ValidationError("非法操作：你只能评价自己购买的订单")
+
+        # 🛡️ 亮点3：业务状态校验
+        # 只有“已发货”或“已收货”的订单才能评价（防止恶意对未支付订单刷分）
+        if order.status not in ['shipped', 'received', 'paid']:
+            raise ValidationError("订单尚未完成，暂不能评价")
+
+        # 2. 保存评价
+        # 增加异常捕获，防止因为 OneToOneField 重复评价导致系统崩溃
+        try:
+            review = serializer.save()
+        except IntegrityError:
+            raise ValidationError("该订单已经评价过了，请勿重复提交")
+
+        # 3. 核心逻辑：更新卖家信用分
         seller = order.seller
         score_change = 0
-        
         s = review.buyer_score
+        
         if s == 5: score_change = 2
         elif s == 4: score_change = 1
         elif s == 2: score_change = -5
@@ -156,11 +197,33 @@ class ReviewViewSet(viewsets.ModelViewSet):
         if score_change != 0:
             seller.credit_score = F('credit_score') + score_change
             seller.save()
-            seller.refresh_from_db() 
+            # 💡 提示：使用 F 对象后，seller.credit_score 在当前内存里还是旧值
+            # 如果后面还需要用到最新分值，必须执行下一行：
+            # seller.refresh_from_db() 
         
-        # 订单状态改为已完成
-        order.status = 'received'
-        order.save()
+        # 4. 更新订单状态为“已收货/已完成”
+        if order.status != 'received':
+            order.status = 'received'
+            order.save()
+        
+        
+    @action(detail=True, methods=['post'])
+    def append_review(self, request, pk=None):
+        """追加评价逻辑"""
+        review = self.get_object()
+        content = request.data.get('content')
+        
+        if not content:
+            return Response({'detail': '请输入追评内容'}, status=400)
+        
+        if review.additional_comment:
+            return Response({'detail': '您已进行过追加评价'}, status=400)
+            
+        review.additional_comment = content
+        review.additional_time = datetime.now()
+        review.save()
+        
+        return Response({'status': '追加评价成功'})
 
 
 class CartViewSet(viewsets.ModelViewSet):
@@ -177,4 +240,21 @@ class CartViewSet(viewsets.ModelViewSet):
         product = serializer.validated_data['product']
         if CartItem.objects.filter(user=self.request.user, product=product).exists():
             raise serializers.ValidationError("该商品已在购物车中")
+        serializer.save(user=self.request.user)
+
+
+class FavoriteViewSet(viewsets.ModelViewSet):
+    """
+    收藏视图
+    """
+    queryset = Favorite.objects.all()
+    serializer_class = FavoriteSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        # 只看自己的收藏，并按时间倒序
+        return Favorite.objects.filter(user=self.request.user).order_by('-add_time')
+    
+    def perform_create(self, serializer):
+        # 自动关联当前用户
         serializer.save(user=self.request.user)
