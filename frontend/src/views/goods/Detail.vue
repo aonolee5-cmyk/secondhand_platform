@@ -53,7 +53,8 @@
 
           <!-- 核心交易按钮 -->
           <div class="actions">
-            <el-button type="warning" size="large" icon="ChatDotRound" class="action-btn" @click="handleChat">向卖家咨询</el-button>
+            <el-button type="warning" size="large" icon="ChatDotRound" class="action-btn" @click="handleChat">向商家咨询</el-button>
+            <el-button type="primary" plain size="large" icon="ShoppingCart" class="action-btn"@click="handleAddToCart">加入购物车</el-button>
             <el-button type="danger" size="large" icon="ShoppingCart" class="action-btn" @click="handleBuy">立即购买</el-button>
             <el-button 
               :type="isFavorite ? 'danger' : 'info'" 
@@ -107,6 +108,48 @@
         <el-button type="danger" @click="handleReportSubmit" :loading="reportLoading">提交举报</el-button>
       </template>
     </el-dialog>
+    <!-- 🚀 新增：地址选择弹窗 (企业级真实逻辑) -->
+    <el-dialog v-model="addressVisible" title="确认收货信息" width="500px" destroy-on-close>
+      <div class="address-selector-container">
+        <el-alert 
+          title="请选择一个收货地址以完成下单" 
+          type="info" 
+          show-icon 
+          :closable="false" 
+          style="margin-bottom: 15px"
+        />
+        
+        <el-radio-group v-model="selectedAddressId" style="width: 100%">
+          <div class="address-list-wrapper">
+            <el-card 
+              v-for="addr in addressList" 
+              :key="addr.id" 
+              :class="['addr-card', { active: selectedAddressId === addr.id }]"
+              shadow="never"
+              @click="selectedAddressId = addr.id"
+            >
+              <el-radio :value="addr.id">
+                <div class="addr-detail">
+                  <div class="top">
+                    <span class="name">{{ addr.receiver }}</span>
+                    <span class="phone">{{ addr.mobile }}</span>
+                    <el-tag v-if="addr.is_default" size="small" type="danger" effect="plain">默认</el-tag>
+                  </div>
+                  <div class="bottom">
+                    {{ addr.region }} {{ addr.detail }}
+                  </div>
+                </div>
+              </el-radio>
+            </el-card>
+          </div>
+        </el-radio-group>
+      </div>
+
+      <template #footer>
+        <el-button @click="addressVisible = false">取消</el-button>
+        <el-button type="danger" @click="confirmOrder" :loading="orderLoading">确认购买</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -114,7 +157,7 @@
 import { ref, reactive, onMounted, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { getProductDetail } from '@/api/goods'
-import { submitReport } from '@/api/user' 
+import { submitReport, getAddresses } from '@/api/user' 
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { 
   ChatDotRound, 
@@ -124,8 +167,9 @@ import {
   StarFilled,
   Warning 
 } from '@element-plus/icons-vue'
-import {createOrder} from "@/api/trade";
+import {createOrder, checkFavoriteStatus, toggleFavorite} from "@/api/trade";
 import request from '@/utils/request'
+import { addToCart } from '@/api/trade'
 
 const route = useRoute()
 const router = useRouter()
@@ -137,6 +181,12 @@ const reportDialog = ref({
   target_user: null,
   product: null
 })
+
+const orderLoading = ref(false)
+
+const addressVisible = ref(false)     // 控制地址选择弹窗
+const addressList = ref([])           // 用户的所有地址
+const selectedAddressId = ref(null)   // 用户选中的地址ID
 
 // 咨询卖家逻辑
 const handleChat = () => {
@@ -163,34 +213,40 @@ const creditLevel = computed(() => {
   return { text: '信用极差', color: '#F56C6C' }
 })
 
-// 收藏逻辑
-const handleFavorite = async () => {
-  if (!localStorage.getItem('token')) {
-    ElMessage.warning('请先登录后再收藏')
-    router.push('/login')
-    return
-}
-
-try {
-    if (isFavorite.value) {
-      // 💔 如果已收藏，执行取消收藏（这里逻辑根据你的后端设计，通常是 DELETE）
-      // 简单起见，如果后端没写一键切换接口，我们就调删除接口
-      // 你需要先获取该收藏记录的 ID，或者后端提供根据 product_id 删除的接口
-      ElMessage.info('取消收藏功能开发中，请在收藏夹统一管理')
-    } else {
-      // ❤️ 执行收藏
-      await request({ 
-        url: '/trade/favorites/', 
-        method: 'post', 
-        data: { product: product.value.id } 
-      })
-      isFavorite.value = true
-      ElMessage.success('已加入收藏夹')
-    }
+// --- 2. 核心：收藏逻辑 (支持取消) ---
+// 初始化时检查是否已收藏
+const getFavoriteStatus = async () => {
+  if (!localStorage.getItem('token')) return 
+  try {
+    const res = await checkFavoriteStatus(route.params.id)
+    isFavorite.value = res.is_favorite
   } catch (err) {
-    console.error(err)
+    console.error('检查收藏状态失败', err)
   }
 }
+
+// 点击按钮切换收藏/取消收藏
+const handleFavorite = async () => {
+  if (!localStorage.getItem('token')) {
+    ElMessage.warning('请先登录后再进行操作')
+    router.push('/login')
+    return
+  }
+
+  try {
+    const res = await toggleFavorite(product.value.id)
+    isFavorite.value = res.is_favorite // 后端返回最新的状态
+    if (isFavorite.value) {
+      ElMessage.success('已加入收藏夹')
+    } else {
+      ElMessage.info('已取消收藏')
+    }
+  } catch (err) {
+    console.error('操作收藏失败', err)
+  }
+}
+
+
 // 举报逻辑
 const reportVisible = ref(false)
 const reportLoading = ref(false)
@@ -239,45 +295,100 @@ const handleBuy = async () => {
     router.push('/login')
     return
   }
-   try {
-    await ElMessageBox.confirm(
-      `商品价格：￥${product.value.price}，确定要下单吗？`,
-      '交易确认',
-      {
-        confirmButtonText: '确认支付',
-        cancelButtonText: '取消',
-        type: 'warning',
-      }
-    )
 
-    // 3. 调用后端下单 API
-    // 注意：后端 createOrder 需要 product_id 和 address
-    // 这里为了演示流程，我们先模拟一个默认地址对象
-    // (完善版本应该弹窗让用户选择收货地址)
+   // 获取用户地址列表
+  try {
+    const res = await getAddresses()
+    addressList.value = res.results || res
+    
+    if (addressList.value.length === 0) {
+      // 如果没填过地址，引导去个人中心
+      await ElMessageBox.confirm('您还没有设置收货地址，请先去设置', '提示', {
+        confirmButtonText: '去设置',
+        cancelButtonText: '取消',
+        type: 'info'
+      })
+      router.push('/user/profile')
+      return
+    }
+
+    // 默认选中那个标为“默认”的地址
+    const defaultAddr = addressList.value.find(a => a.is_default)
+    selectedAddressId.value = defaultAddr ? defaultAddr.id : addressList.value[0].id
+    
+    // 打开地址选择弹窗
+    addressVisible.value = true
+  } catch (err) {
+    console.error('获取地址失败', err)
+  }
+}
+
+// 添加到购物车
+const handleAddToCart = async () => {
+  // 1. 登录校验
+  if (!localStorage.getItem('token')) {
+    ElMessage.warning('请先登录后再操作')
+    router.push('/login')
+    return
+  }
+
+  // 2. 权限校验：不能把自己的商品加进购物车
+  // 注意：product.value.owner 是卖家ID
+  // 如果需要严格校验，可以从 getProfile 拿到当前用户ID对比
+  
+  try {
+    await addToCart({ product: product.value.id })
+    
+    // 🚀 企业级交互：成功的正向反馈
+    ElMessage({
+      message: '已成功加入购物车！',
+      type: 'success',
+      duration: 2000,
+      showClose: true
+    })
+  } catch (err) {
+    // 拦截器会处理“商品已在购物车中”等后端返回的错误
+    console.error(err)
+  }
+}
+
+// 3. 核心：最终确认下单函数
+const confirmOrder = async () => {
+  const chosenAddress = addressList.value.find(a => a.id === selectedAddressId.value)
+  if (!chosenAddress) return // 安全校验
+  orderLoading.value = true
+  try {
     const orderData = {
       product_id: product.value.id,
       address: {
-        receiver: '当前用户', 
-        mobile: '13800000000', 
-        region: '线上交易', 
-        detail: '无需配送' 
+        receiver: chosenAddress.receiver,
+        mobile: chosenAddress.mobile,
+        region: chosenAddress.region,
+        detail: chosenAddress.detail
       }
     }
 
-    await createOrder(orderData)
+    // 🚀 【关键修改点 1】：接收后端返回的订单对象
+    // 后端接口执行成功后，通常会把新生成的订单数据发回来，其中包含订单的数据库 ID
+    const res = await createOrder(orderData)
     
-    // 成功
-    ElMessage.success('下单成功！')
+    ElMessage.success('订单已提交，正在前往收银台...')
     
-    // 跳转到订单列表页去支付
-    router.push('/orders')
+    // 关闭地址选择弹窗
+    addressVisible.value = false
+    
+    // 🚀 【关键修改点 2】：跳转到支付收银台，并带上订单 ID
+    // 这里的 res.id 是后端返回的订单主键
+    router.push(`/payment/${res.id}`)
 
   } catch (err) {
-    if (err !== 'cancel') {
-      console.error(err)
-    }
+    console.error('下单过程出错:', err)
+    // 拦截器会自动处理报错提示
+  } finally {
+    orderLoading.value = false
   }
 }
+
 
 onMounted(async () => {
   const id = route.params.id

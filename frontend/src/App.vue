@@ -77,21 +77,21 @@
                     <div class="menu-row" @click="handleCommand('/user/products')">
                       <span class="row-title">我卖出的</span>
                       <div class="row-right">
-                        <span class="count">0</span>
+                        <span class="count">{{ userStats.sell_count }}</span>
                         <el-icon><ArrowRight /></el-icon>
                       </div>
                     </div>
                     <div class="menu-row" @click="handleCommand('/user/orders')">
                       <span class="row-title">我买到的</span>
                       <div class="row-right">
-                        <span class="count">0</span>
+                        <span class="count">{{ userStats.buy_count }}</span>
                         <el-icon><ArrowRight /></el-icon>
                       </div>
                     </div>
                     <div class="menu-row" @click="handleCommand('/user/favorites')">
                       <span class="row-title">我的收藏</span>
                       <div class="row-right">
-                        <span class="count">0</span>
+                        <span class="count">{{ userStats.fav_count }}</span>
                         <el-icon><ArrowRight /></el-icon>
                       </div>
                     </div>
@@ -146,7 +146,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, watch, computed } from 'vue'
+import { ref, onMounted, watch, computed, reactive } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { 
   Search, Plus, Shop, ArrowDown, ShoppingCart, 
@@ -181,6 +181,7 @@ const updateGlobalStatus = () => {
   }
 }
 
+// 检查未读信息
 const checkUnread = async () => {
   if (!isLogin.value) return
   try {
@@ -189,6 +190,8 @@ const checkUnread = async () => {
   } catch (err) { /* 静默 */ }
 }
 
+
+// 处理登出
 const handleCommand = (command) => {
   if (command === 'logout') {
     localStorage.clear()
@@ -201,6 +204,8 @@ const handleCommand = (command) => {
   }
 }
 
+
+// 处理搜索
 const handleSearch = () => {
   const q = searchQuery.value.trim()
   router.push({ path: '/', query: { q: q } })
@@ -220,16 +225,39 @@ const isSearchPage = computed(() => {
   return route.path === '/' || route.meta.showSearch === true
 })
 
+const userStats = reactive({
+  buy_count: 0,
+  sell_count: 0,
+  fav_count: 0
+})
 
+// 修改获取用户信息的逻辑
+const fetchUserInfo = async () => {
+  if (!localStorage.getItem('token')) return
+  try {
+    const res = await request({ url: '/users/profile/', method: 'get' })
+    // 将后端传来的统计数字赋值给响应式变量
+    userStats.buy_count = res.buy_count
+    userStats.sell_count = res.sell_count
+    userStats.fav_count = res.fav_count
+  } catch (err) {
+    console.error(err)
+  }
+}
 
 onMounted(() => {
   updateGlobalStatus()
+  fetchUserInfo()
   checkUnread()
   setInterval(checkUnread, 30000)
 })
 
 watch(() => route.path, (newPath) => {
   updateGlobalStatus()
+  if (isLogin.value) {
+    fetchUserInfo()
+  }
+  
   if (newPath.startsWith('/admin') && !isAdmin.value) {
     ElMessage.error('权限不足')
     // router.push('/')

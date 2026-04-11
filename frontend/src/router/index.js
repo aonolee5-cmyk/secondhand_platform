@@ -5,6 +5,7 @@ import AdminOrders from '@/views/admin/OrderList.vue'
 import { ElMessage } from 'element-plus'
 import UserLayout from '@/views/user/UserLayout.vue'
 import Profile from '@/views/user/Profile.vue'
+import orders from '@/views/trade/Orders.vue'
 
 
 // 1. 定义路由
@@ -21,6 +22,26 @@ const routes = [
   { path: '/cart', name: 'Cart', component: () => import('@/views/trade/Cart.vue'), meta: { auth: true } },
   { path: '/chat/:targetId', name: 'Chat', component: () => import('@/views/chat/Chat.vue'), meta: { auth: true } },
   { path: '/chat-list', name: 'ChatList', component: () => import('@/views/chat/List.vue'), meta: { auth: true } },
+
+  {
+    path: '/payment/:id',
+    name: 'Payment',
+    component: () => import('@/views/trade/Payment.vue'), // 检查文件路径是否正确
+    meta: { title: '订单支付' }
+  },
+  {
+    path: '/pay-success',
+    name: 'PaySuccess',
+    component: () => import('@/views/trade/PaySuccess.vue'),
+    meta: { title: '支付成功' }
+  },
+
+  {
+  path: '/order-detail/:id',
+  name: 'OrderDetail',
+  component: () => import('@/views/trade/OrderDetail.vue'),
+  meta: { title: '订单详情' }
+  },
 
   // --- 个人中心模块 (User Center) - 对应你图片二的布局 ---
   {

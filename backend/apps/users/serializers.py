@@ -11,11 +11,27 @@ class UserProfileSerializer(serializers.ModelSerializer):
     """
     用于展示用户信息
     """
+    buy_count = serializers.SerializerMethodField()
+    sell_count = serializers.SerializerMethodField()
+    fav_count = serializers.SerializerMethodField()
     class Meta:
         model = User
-        fields = ['id', 'username', 'nickname', 'mobile', 'avatar', 'real_name', 'id_card', 'is_verified', 'credit_score', 'verify_status']
+        fields = ['id', 'username', 'nickname', 'mobile', 'avatar', 'real_name', 'id_card', 'is_verified', 'credit_score', 'verify_status', 'buy_count', 'sell_count', 'fav_count']
         read_only_fields = ['username', 'credit_score', 'is_verified']
 
+    # 逻辑：通过反向查询统计数量
+    def get_buy_count(self, obj):
+        return obj.buy_orders.count() # 对应 Order 模型中的 buyer 关联
+
+    def get_sell_count(self, obj):
+        return obj.sell_orders.count() # 对应 Order 模型中的 seller 关联
+
+    def get_fav_count(self, obj):
+        # 对应 Favorite 模型
+        from trade.models import Favorite
+        return Favorite.objects.filter(user=obj).count()
+    
+    
 class AddressSerializer(serializers.ModelSerializer):
     class Meta:
         model = Address

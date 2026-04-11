@@ -50,3 +50,30 @@ export function handleRefund(id,data) {
     data
   })
 }
+
+// 查询收藏状态
+export function checkFavoriteStatus(productId) {
+  return request({ 
+    url: '/trade/favorites/check_status/', 
+    method: 'get', 
+    params: { product_id: productId } 
+  })
+}
+
+// 切换收藏状态
+export function toggleFavorite(productId) {
+  return request({ 
+    url: '/trade/favorites/toggle/', 
+    method: 'post', 
+    data: { product_id: productId } 
+  })
+}
+
+// 添加购物车
+export function addToCart(data) {
+  return request({ 
+    url: '/trade/cart/', 
+    method: 'post', 
+    data 
+  })
+}

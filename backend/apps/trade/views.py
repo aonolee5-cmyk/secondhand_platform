@@ -74,13 +74,17 @@ class OrderViewSet(viewsets.ModelViewSet):
         """支付管理：模拟支付"""
         order = self.get_object()
         if order.status != 'unpaid':
-            return Response({'detail': '订单状态异常'}, status=400)
+            return Response({'detail': '订单已完成，请勿重复支付！'}, status=400)
         
         # 模拟支付扣款逻辑
         order.status = 'paid'
-        order.pay_time = time.strftime('%Y-%m-%d %H:%M:%S')
+        order.pay_time = datetime.now()
+        order.memo = f"ALIPAY_TRADE_{int(time.time())}"
         order.save()
-        return Response({'status': '支付成功'})
+        return Response({'status': '支付成功',
+                         'order_sn': order.order_sn,
+                         'pay_no': order.memo                         
+                         })
     
     # 退款
     @action(detail=True, methods=['post'])
@@ -153,7 +157,26 @@ class OrderViewSet(viewsets.ModelViewSet):
         order.save()
         
         return Response({'status': '已确认收货，交易完成'})
-
+    
+    @action(detail=True, methods=['post'])
+    def ship(self, request, pk=None):
+        """卖家执行发货"""
+        order = self.get_object()
+        
+        # 🛡️ 安全检查：只有卖家本人能点发货
+        if order.seller != request.user:
+            return Response({'detail': '非法操作：您不是该订单的卖家'}, status=403)
+        
+        # 🛡️ 状态检查：只有“已支付”的订单才能发货
+        if order.status != 'paid':
+            return Response({'detail': '订单状态异常，无法发货'}, status=400)
+            
+        # 变更状态为已发货
+        order.status = 'shipped'
+        order.save()
+        
+        return Response({'status': '发货成功，已通知买家'})
+    
 class ReviewViewSet(viewsets.ModelViewSet):
     """
     评论视图
@@ -258,3 +281,29 @@ class FavoriteViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         # 自动关联当前用户
         serializer.save(user=self.request.user)
+    
+    
+    @action(detail=False, methods=['post'])
+    def toggle(self, request):
+        product_id = request.data.get('product_id')
+        if not product_id:
+            return Response({'detail': '缺少商品ID'}, status=400)
+        
+        # 查找是否存在记录
+        fav = Favorite.objects.filter(user=request.user, product_id=product_id).first()
+        
+        if fav:
+            # 如果已存在，则删除（取消收藏）
+            fav.delete()
+            return Response({'is_favorite': False, 'detail': '已取消收藏'})
+        else:
+            # 如果不存在，则创建（加入收藏）
+            Favorite.objects.create(user=request.user, product_id=product_id)
+            return Response({'is_favorite': True, 'detail': '已加入收藏夹'})
+
+    # 🚀 亮点功能：进入商品页时查询状态
+    @action(detail=False, methods=['get'])
+    def check_status(self, request):
+        product_id = request.query_params.get('product_id')
+        exists = Favorite.objects.filter(user=request.user, product_id=product_id).exists()
+        return Response({'is_favorite': exists})

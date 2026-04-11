@@ -1,63 +1,159 @@
 <template>
-  <div class="cart-container">
-    <el-card header="我的购物车">
-      <el-table :data="cartList">
-        <el-table-column label="商品" width="400">
-          <template #default="scope">
-            <div class="product-item">
-              <el-image :src="'http://127.0.0.1:8000'+scope.row.product_image" style="width: 60px" />
-              <span style="margin-left: 10px">{{ scope.row.product_title }}</span>
+  <div class="cart-page-wrapper">
+    <div class="cart-container">
+      <el-card header="我的购物车">
+        <el-table :data="cartList">
+          <el-table-column label="商品" width="400">
+            <template #default="scope">
+              <div class="product-item">
+                <el-image :src="'http://127.0.0.1:8000'+scope.row.product_image" style="width: 60px" />
+                <span style="margin-left: 10px">{{ scope.row.product_title }}</span>
+              </div>
+            </template>
+          </el-table-column>
+          <el-table-column prop="product_price" label="单价" />
+          <el-table-column label="操作">
+            <template #default="scope">
+              <el-button type="danger" @click="handleDelete(scope.row.id)">移除</el-button>
+              <el-button type="primary" @click="goToCheckout(scope.row)">立即下单</el-button>
+            </template>
+          </el-table-column>
+        </el-table>
+      </el-card>
+    </div>
+  <!-- 🚀 地址选择弹窗 (直接复用详情页的逻辑) -->
+  <el-dialog v-model="addressVisible" title="确认收货信息" width="500px">
+    <div class="address-selector">
+      <el-radio-group v-model="selectedAddressId" style="width: 100%">
+        <el-card 
+          v-for="addr in addressList" 
+          :key="addr.id" 
+          :class="['addr-card', { active: selectedAddressId === addr.id }]"
+          shadow="never"
+          @click="selectedAddressId = addr.id"
+          style="margin-bottom: 10px; cursor: pointer"
+        >
+          <el-radio :label="addr.id">
+            <div class="addr-info">
+              <span style="font-weight: bold">{{ addr.receiver }}</span>
+              <span style="margin-left: 10px; color: #666">{{ addr.mobile }}</span>
+              <p style="margin: 5px 0 0; font-size: 13px; color: #999">
+                {{ addr.region }} {{ addr.detail }}
+              </p>
             </div>
-          </template>
-        </el-table-column>
-        <el-table-column prop="product_price" label="单价" />
-        <el-table-column label="操作">
-          <template #default="scope">
-            <el-button type="danger" @click="handleDelete(scope.row.id)">移除</el-button>
-            <el-button type="primary" @click="goToCheckout(scope.row)">立即下单</el-button>
-          </template>
-        </el-table-column>
-      </el-table>
-    </el-card>
-  </div>
+          </el-radio>
+        </el-card>
+      </el-radio-group>
+    </div>
+    <template #footer>
+      <el-button @click="addressVisible = false">返回</el-button>
+      <el-button type="danger" @click="confirmOrder">确认下单并去支付</el-button>
+    </template>
+  </el-dialog>
+</div>
 </template>
 <script setup>
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import request from '@/utils/request'
+import { getAddresses } from '@/api/user' 
+import { createOrder } from '@/api/trade'
 
 const router = useRouter()
 const cartList = ref([])
 
-// 加载购物车数据
+// 地址相关状态
+const addressVisible = ref(false)
+const addressList = ref([])
+const selectedAddressId = ref(null)
+const currentOrderProduct = ref(null) 
+
+// 1. 加载购物车数据
 const loadCart = async () => {
   try {
     const res = await request({ url: '/trade/cart/', method: 'get' })
     cartList.value = res.results || res
   } catch (error) {
-    console.error(error)
+    console.error('加载购物车失败:', error)
   }
 }
 
-onMounted(loadCart)
+// 2. 立即下单逻辑：准备阶段
+const goToCheckout = async (item) => {
+  currentOrderProduct.value = item
+  try {
+    const res = await getAddresses()
+    // 🚀 修正：统一使用 results 兼容分页
+    addressList.value = res.results || res.data?.results || res
 
-// 移除商品逻辑
+    if (addressList.value.length === 0) {
+      ElMessage.warning('请先设置收货地址')
+      router.push('/user/profile')
+      return
+    }
+
+    // 默认选中
+    const defaultAddr = addressList.value.find(a => a.is_default)
+    selectedAddressId.value = defaultAddr ? defaultAddr.id : addressList.value[0].id
+    addressVisible.value = true
+  } catch (err) {
+    console.error('获取地址失败:', err)
+  }
+}
+
+// 3. 🚀 核心：确认下单并执行跳转
+const confirmOrder = async () => {
+  const chosenAddress = addressList.value.find(a => a.id === selectedAddressId.value)
+  
+  try {
+    const orderData = {
+      product_id: currentOrderProduct.value.product, 
+      address: {
+        receiver: chosenAddress.receiver,
+        mobile: chosenAddress.mobile,
+        region: chosenAddress.region,
+        detail: chosenAddress.detail
+      }
+    }
+
+    // 调用后端下单接口
+    const res = await createOrder(orderData)
+    
+    // 🔍 DEBUG 打印：如果还是跳不走，按 F12 看这里打印的内容
+    console.log('下单接口返回全量数据:', res)
+
+    // 兼容多种数据结构获取 ID
+    const orderId = res.id || (res.data && res.data.id)
+
+    if (orderId) {
+      ElMessage.success('订单已创建，转向支付页...')
+      addressVisible.value = false
+      // 🚀 跳转到支付页面
+      router.push(`/payment/${orderId}`) 
+    } else {
+      // 如果后端没给 ID，作为备选方案跳到订单页
+      ElMessage.warning('下单成功，请在订单中心支付')
+      router.push('/orders')
+    }
+  } catch (err) {
+    console.error('下单失败:', err)
+  }
+}
+
 const handleDelete = async (id) => {
-  await ElMessageBox.confirm('确定要从购物车移除该商品吗？', '提示')
-  await request({ url: `/trade/cart/${id}/`, method: 'delete' })
-  ElMessage.success('已移除')
-  loadCart()
+  try {
+    await ElMessageBox.confirm('确定要从购物车移除吗？', '提示', { type: 'warning' })
+    await request({ url: `/trade/cart/${id}/`, method: 'delete' })
+    ElMessage.success('已移除')
+    loadCart()
+  } catch (err) { /* 取消则不操作 */ }
 }
 
-// 立即下单逻辑
-const goToCheckout = (row) => {
-  // 跳转到确认订单页，带上商品ID
-  router.push({
-    path: '/checkout',
-    query: { product_id: row.product }
-  })
-}
+
+onMounted(() => {
+  loadCart()
+})
 </script>
 
 <style scoped>

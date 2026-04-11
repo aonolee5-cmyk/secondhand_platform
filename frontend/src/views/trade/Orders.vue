@@ -8,7 +8,14 @@
     <el-card shadow="never">
       <!-- ================= 买家视角 (只有在非卖家模式下显示) ================= -->
       <el-table v-if="!isSellerMode" :data="buyOrders" empty-text="暂无买入订单" stripe>
-        <el-table-column prop="order_sn" label="订单号" width="180" />
+        <el-table-column prop="order_sn" label="订单号" width="180" >
+          <template #default="scope">
+            <!-- 🚀 这里加上和卖家端一样的 el-link 和点击事件 -->
+            <el-link type="primary" underline="never" @click="showOrderDetail(scope.row)">
+              {{ scope.row.order_sn }}
+            </el-link>
+          </template>
+        </el-table-column>
         <el-table-column prop="product_title" label="商品" />
         <el-table-column prop="total_amount" label="金额" width="100" />
         <el-table-column label="状态" width="120">
@@ -71,7 +78,14 @@
 
       <!-- ================= 卖家视角 (只有在卖家模式下显示) ================= -->
       <el-table v-else :data="sellOrders" empty-text="暂无卖出订单" stripe>
-        <el-table-column prop="order_sn" label="订单号" width="180" />
+        <el-table-column prop="order_sn" label="订单号" width="180" >
+          <template #default="scope">
+            <!-- 🚀 点击订单号触发详情弹窗 -->
+            <el-link type="primary" underline="never" @click="showOrderDetail(scope.row)">
+              {{ scope.row.order_sn }}
+            </el-link>
+          </template>
+        </el-table-column>
         <el-table-column prop="product_title" label="商品" />
         <el-table-column prop="total_amount" label="金额" width="100" />
         <el-table-column label="状态" width="120">
@@ -151,6 +165,35 @@
       </template>
     </el-dialog>
   </div>
+    <!-- 🚀 订单详情对话框 -->
+    <el-dialog v-model="detailVisible" title="交易单据详情" width="600px">
+      <div v-if="selectedOrder" class="order-detail-container">
+        <el-descriptions title="基本信息" :column="2" border>
+          <el-descriptions-item label="订单编号">{{ selectedOrder.order_sn }}</el-descriptions-item>
+          <el-descriptions-item label="交易状态">
+            <el-tag size="small">{{ statusMap[selectedOrder.status]?.label }}</el-tag>
+          </el-descriptions-item>
+          <el-descriptions-item label="下单时间">{{ formatDate(selectedOrder.create_time) }}</el-descriptions-item>
+          <el-descriptions-item label="订单金额"><b style="color: #f56c6c">￥{{ selectedOrder.total_amount }}</b></el-descriptions-item>
+        </el-descriptions>
+
+        <el-descriptions title="收货信息" :column="1" border style="margin-top: 20px">
+          <el-descriptions-item label="收货人">{{ selectedOrder.receiver_info?.receiver }}</el-descriptions-item>
+          <el-descriptions-item label="联系电话">{{ selectedOrder.receiver_info?.mobile }}</el-descriptions-item>
+          <el-descriptions-item label="详细地址">
+            {{ selectedOrder.receiver_info?.region }} {{ selectedOrder.receiver_info?.detail }}
+          </el-descriptions-item>
+        </el-descriptions>
+
+        <el-descriptions title="参与成员" :column="2" border style="margin-top: 20px">
+          <el-descriptions-item label="卖家">{{ selectedOrder.seller_name }}</el-descriptions-item>
+          <el-descriptions-item label="买家">{{ selectedOrder.buyer_name }}</el-descriptions-item>
+        </el-descriptions>
+      </div>
+      <template #footer>
+        <el-button @click="detailVisible = false">关闭</el-button>
+      </template>
+    </el-dialog>
 </template>
 
 
@@ -159,12 +202,17 @@ import { ref, reactive, onMounted, computed, watch } from 'vue' // 🚀 新增 c
 import request from '@/utils/request'
 import { getProfile } from '@/api/user' 
 import { ElMessage } from 'element-plus'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 
 const route = useRoute()
+const router = useRouter()
 // 🚀 核心判断逻辑：是否为卖家模式（通过 URL 路径判断）
 const isSellerMode = computed(() => route.path.includes('sell-orders'))
 
+
+
+const detailVisible = ref(false)
+const selectedOrder = ref(null)
 const buyOrders = ref([])
 const sellOrders = ref([])
 
@@ -217,10 +265,10 @@ watch(() => route.path, () => {
   loadOrders()
 })
 
-const handlePay = async (id) => {
-  await request({ url: `/trade/orders/${id}/pay/`, method: 'post' })
-  ElMessage.success('支付成功')
-  loadOrders()
+const handlePay = (id) => {
+  // 这里的 id 是订单的主键 ID
+  // router 会带你去执行扫码、确认支付等一系列有“仪式感”的操作
+  router.push(`/payment/${id}`)
 }
 
 const handleReceive = async (id) => {
@@ -335,6 +383,19 @@ const submitAdditionalReview = async () => {
   } finally {
     addReviewLoading.value = false
   }
+}
+
+// 显示详情函数
+const showOrderDetail = (row) => {
+  selectedOrder.value = row
+  detailVisible.value = true
+}
+
+// 格式化时间的辅助函数 (提升企业级专业度)
+const formatDate = (dateStr) => {
+  if (!dateStr) return '-'
+  const date = new Date(dateStr)
+  return date.toLocaleString()
 }
 
 onMounted(() => {

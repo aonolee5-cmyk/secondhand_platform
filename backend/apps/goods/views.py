@@ -37,14 +37,18 @@ class ProductViewSet(viewsets.ModelViewSet):
         商品列表查询集
         """
         user = self.request.user
-        action_name = self.action
+        # action_name = self.action
         query_params = self.request.query_params
         
         # 1. 基础逻辑：是看“我的”还是看“大厅”的
-        is_mine = query_params.get('mine') == '1'
-        if user.is_authenticated and (action_name == 'change_status' or is_mine):
+        if user.is_authenticated and user.is_staff:
+            # 如果是管理员(Staff)，拥有上帝视角，可以看到所有状态、所有人的商品
+            qs = Product.objects.all()
+        elif user.is_authenticated and query_params.get('mine') == '1':
+            # 普通用户看“我的发布”
             qs = Product.objects.filter(owner=user)
         else:
+            # 游客或普通看大厅，只能看到“在售”
             qs = Product.objects.filter(status='onsale')
 
         # 2. 手动叠加搜索过滤
@@ -60,6 +64,10 @@ class ProductViewSet(viewsets.ModelViewSet):
         if cat_id:
             qs = qs.filter(category_id=cat_id)
 
+        status_filter = query_params.get('status', None)
+        if status_filter and user.is_staff:
+            qs = qs.filter(status=status_filter)
+        
         return qs.order_by('-create_time')
 
     # 上传图片
@@ -76,7 +84,7 @@ class ProductViewSet(viewsets.ModelViewSet):
     def change_status(self, request, pk=None):
         product = self.get_object()
         new_status = request.data.get('status')
-        if new_status in ['onsale', 'off', 'sold']:
+        if new_status in ['onsale', 'off', 'sold', 'audit']:
             product.status = new_status
             product.save()
             return Response({'status': 'success'})

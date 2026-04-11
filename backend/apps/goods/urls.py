@@ -8,7 +8,7 @@ router = DefaultRouter()
 
 router.register(r'categories', CategoryViewSet)
 router.register(r'products', ProductViewSet,basename='product')
-router.register(r'list', ProductViewSet)
+router.register(r'list', ProductViewSet, basename='product')
 router.register(r'admin/sensitive', AdminSensitiveWordViewSet, basename='admin-sensitive')
 
 urlpatterns = [

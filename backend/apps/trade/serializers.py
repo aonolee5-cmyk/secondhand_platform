@@ -25,6 +25,8 @@ class OrderSerializer(serializers.ModelSerializer):
     review_id = serializers.SerializerMethodField() # 评价ID，方便追评时调用
     product_title = serializers.ReadOnlyField(source='product.title')
     product_image = serializers.SerializerMethodField()
+    buyer_name = serializers.ReadOnlyField(source='buyer.username')
+    seller_name = serializers.ReadOnlyField(source='seller.username')
     class Meta:
         model = Order
         fields = '__all__'
