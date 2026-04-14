@@ -6,10 +6,10 @@
         <el-carousel height="500px" border indicator-position="outside">
           <el-carousel-item v-for="(img, index) in product.images" :key="index">
             <el-image 
-              :src="'http://127.0.0.1:8000' + img" 
+              :src="resolveImageUrl(img)" 
               fit="contain" 
               class="main-img" 
-              :preview-src-list="product.images.map(i => 'http://127.0.0.1:8000' + i)"
+              :preview-src-list="product.images.map(i => resolveImageUrl(i))"
             />
           </el-carousel-item>
         </el-carousel>
@@ -28,7 +28,7 @@
 
           <!-- 卖家信息与信用展示 -->
           <div class="seller-box">
-            <el-avatar :size="45" :src="product.owner_avatar ? 'http://127.0.0.1:8000' + product.owner_avatar : ''">
+            <el-avatar :size="45" :src="resolveImageUrl(product.owner_avatar)">
               <el-icon><UserFilled /></el-icon>
             </el-avatar>
             <div class="seller-info">
@@ -165,38 +165,41 @@ import {
   UserFilled, 
   Star, 
   StarFilled,
-  Warning 
+  Warning,
+  Wallet // 🚀 建议引入钱包图标
 } from '@element-plus/icons-vue'
-import {createOrder, checkFavoriteStatus, toggleFavorite} from "@/api/trade";
+import {createOrder, checkFavoriteStatus, toggleFavorite, addToCart} from "@/api/trade"
 import request from '@/utils/request'
-import { addToCart } from '@/api/trade'
 
 const route = useRoute()
 const router = useRouter()
 const product = ref({})
 const isFavorite = ref(false)
-const reportDialog = ref({
-  reason: '',
-  content: '',
-  target_user: null,
-  product: null
-})
-
 const orderLoading = ref(false)
 
-const addressVisible = ref(false)     // 控制地址选择弹窗
-const addressList = ref([])           // 用户的所有地址
-const selectedAddressId = ref(null)   // 用户选中的地址ID
+// 地址相关状态
+const addressVisible = ref(false)     
+const addressList = ref([])           
+const selectedAddressId = ref(null)   
+
+// 🚀 【新增核心函数】兼容处理本地图片和网络图片
+const resolveImageUrl = (path) => {
+  if (!path) return '';
+  // 如果是 http 开头的绝对路径（脚本生成的），直接返回
+  if (path.startsWith('http')) {
+    return path;
+  }
+  // 如果是 /media 开头的相对路径（手动上传的），拼接后端地址
+  return 'http://127.0.0.1:8000' + path;
+}
 
 // 咨询卖家逻辑
 const handleChat = () => {
-  console.log('咨询卖家')
   if (!localStorage.getItem('token')) {
     ElMessage.warning('请先登录再进行咨询')
     router.push('/login')
     return
   }
-// 跳转到聊天页面
   router.push({
     name: 'Chat',
     params: { targetId: product.value.owner },
@@ -213,29 +216,16 @@ const creditLevel = computed(() => {
   return { text: '信用极差', color: '#F56C6C' }
 })
 
-// --- 2. 核心：收藏逻辑 (支持取消) ---
-// 初始化时检查是否已收藏
-const getFavoriteStatus = async () => {
-  if (!localStorage.getItem('token')) return 
-  try {
-    const res = await checkFavoriteStatus(route.params.id)
-    isFavorite.value = res.is_favorite
-  } catch (err) {
-    console.error('检查收藏状态失败', err)
-  }
-}
-
-// 点击按钮切换收藏/取消收藏
+// 收藏逻辑
 const handleFavorite = async () => {
   if (!localStorage.getItem('token')) {
     ElMessage.warning('请先登录后再进行操作')
     router.push('/login')
     return
   }
-
   try {
     const res = await toggleFavorite(product.value.id)
-    isFavorite.value = res.is_favorite // 后端返回最新的状态
+    isFavorite.value = res.is_favorite 
     if (isFavorite.value) {
       ElMessage.success('已加入收藏夹')
     } else {
@@ -246,22 +236,16 @@ const handleFavorite = async () => {
   }
 }
 
-
 // 举报逻辑
 const reportVisible = ref(false)
 const reportLoading = ref(false)
-const reportForm = reactive({
-  reason: '',
-  content: ''
-})
+const reportForm = reactive({ reason: '', content: '' })
 
-// 提交举报
 const handleReportSubmit = async () => {
   if (!reportForm.reason) {
     ElMessage.warning('请选择举报理由')
     return
   }
-  
   reportLoading.value = true
   try {
     await submitReport({
@@ -270,16 +254,8 @@ const handleReportSubmit = async () => {
       reason: reportForm.reason,
       content: reportForm.content
     })
-    
-    ElMessageBox.alert('您的举报已收到，后台管理员将在24小时内审核处理。', '提交成功', {
-      confirmButtonText: '确定',
-      type: 'success',
-      callback: () => {
-        reportVisible.value = false
-        reportForm.reason = ''
-        reportForm.content = ''
-      }
-    })
+    ElMessage.success('举报已提交，管理员将尽快处理')
+    reportVisible.value = false
   } catch (err) {
     console.error(err)
   } finally {
@@ -287,22 +263,17 @@ const handleReportSubmit = async () => {
   }
 }
 
-// 立即购买
+// 立即购买 (唤起地址选择)
 const handleBuy = async () => {
-  const token = localStorage.getItem('token')
-  if (!token) {
+  if (!localStorage.getItem('token')) {
     ElMessage.warning('请先登录再进行购买')
     router.push('/login')
     return
   }
-
-   // 获取用户地址列表
   try {
     const res = await getAddresses()
     addressList.value = res.results || res
-    
     if (addressList.value.length === 0) {
-      // 如果没填过地址，引导去个人中心
       await ElMessageBox.confirm('您还没有设置收货地址，请先去设置', '提示', {
         confirmButtonText: '去设置',
         cancelButtonText: '取消',
@@ -311,12 +282,8 @@ const handleBuy = async () => {
       router.push('/user/profile')
       return
     }
-
-    // 默认选中那个标为“默认”的地址
     const defaultAddr = addressList.value.find(a => a.is_default)
     selectedAddressId.value = defaultAddr ? defaultAddr.id : addressList.value[0].id
-    
-    // 打开地址选择弹窗
     addressVisible.value = true
   } catch (err) {
     console.error('获取地址失败', err)
@@ -325,37 +292,23 @@ const handleBuy = async () => {
 
 // 添加到购物车
 const handleAddToCart = async () => {
-  // 1. 登录校验
   if (!localStorage.getItem('token')) {
     ElMessage.warning('请先登录后再操作')
     router.push('/login')
     return
   }
-
-  // 2. 权限校验：不能把自己的商品加进购物车
-  // 注意：product.value.owner 是卖家ID
-  // 如果需要严格校验，可以从 getProfile 拿到当前用户ID对比
-  
   try {
     await addToCart({ product: product.value.id })
-    
-    // 🚀 企业级交互：成功的正向反馈
-    ElMessage({
-      message: '已成功加入购物车！',
-      type: 'success',
-      duration: 2000,
-      showClose: true
-    })
+    ElMessage.success('已成功加入购物车！')
   } catch (err) {
-    // 拦截器会处理“商品已在购物车中”等后端返回的错误
     console.error(err)
   }
 }
 
-// 3. 核心：最终确认下单函数
+// 最终确认下单
 const confirmOrder = async () => {
   const chosenAddress = addressList.value.find(a => a.id === selectedAddressId.value)
-  if (!chosenAddress) return // 安全校验
+  if (!chosenAddress) return 
   orderLoading.value = true
   try {
     const orderData = {
@@ -367,28 +320,17 @@ const confirmOrder = async () => {
         detail: chosenAddress.detail
       }
     }
-
-    // 🚀 【关键修改点 1】：接收后端返回的订单对象
-    // 后端接口执行成功后，通常会把新生成的订单数据发回来，其中包含订单的数据库 ID
     const res = await createOrder(orderData)
-    
     ElMessage.success('订单已提交，正在前往收银台...')
-    
-    // 关闭地址选择弹窗
     addressVisible.value = false
-    
-    // 🚀 【关键修改点 2】：跳转到支付收银台，并带上订单 ID
-    // 这里的 res.id 是后端返回的订单主键
+    // 🚀 跳转到支付页面
     router.push(`/payment/${res.id}`)
-
   } catch (err) {
-    console.error('下单过程出错:', err)
-    // 拦截器会自动处理报错提示
+    console.error('下单出错:', err)
   } finally {
     orderLoading.value = false
   }
 }
-
 
 onMounted(async () => {
   const id = route.params.id

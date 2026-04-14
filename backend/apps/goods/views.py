@@ -14,13 +14,15 @@ from rest_framework.permissions import IsAuthenticatedOrReadOnly, AllowAny, IsAu
 from rest_framework import permissions
 from django.db.models import Q
 from django.core.files.storage import default_storage
+from rest_framework.permissions import AllowAny
 
 class CategoryViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = Category.objects.all()
     serializer_class = CategorySerializer
+    permission_classes = [AllowAny]
 
 class ProductViewSet(viewsets.ModelViewSet):
-    queryset = Product.objects.filter(status='onsale')
+    queryset = Product.objects.all()
     serializer_class = ProductSerializer
     # 设置游客只读，登录可操作
     permission_classes = [IsAuthenticatedOrReadOnly]
@@ -37,10 +39,11 @@ class ProductViewSet(viewsets.ModelViewSet):
         商品列表查询集
         """
         user = self.request.user
-        # action_name = self.action
         query_params = self.request.query_params
         
-        # 1. 基础逻辑：是看“我的”还是看“大厅”的
+        if self.action in ['retrieve', 'change_status', 'update', 'partial_update', 'destroy']:
+            return Product.objects.all()
+        
         if user.is_authenticated and user.is_staff:
             # 如果是管理员(Staff)，拥有上帝视角，可以看到所有状态、所有人的商品
             qs = Product.objects.all()
@@ -101,9 +104,18 @@ class ProductViewSet(viewsets.ModelViewSet):
         
         serializer.save(owner=self.request.user)
 
+    def get_permissions(self):
+        # 如果是 'list' (列表页) 或 'retrieve' (详情页)，允许所有人访问
+        if self.action in ['list', 'retrieve']:
+            return [AllowAny()]
+        # 其他操作（如发布宝贝、修改、删除），必须登录
+        return [permissions.IsAuthenticated()]
+    
 def check_sensitive_words(content):
     dfa = DFAFilter()
     words = SensitiveWord.objects.values_list('word', flat=True)
     for word in words:
         dfa.add(word)
     return dfa.contains_any(content)
+
+    

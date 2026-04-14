@@ -272,6 +272,8 @@ body {
   padding: 0;
   background-color: #f6f8fa; /* 稍微深一点的灰白，显得高级 */
   font-family: -apple-system, system-ui, BlinkMacSystemFont, "Segoe UI", Roboto;
+  /* 🚀 核心修复：防止缩放时 body 宽度塌陷导致横向截断 */
+  min-width: 1250px; 
 }
 
 .app-wrapper {
@@ -280,7 +282,7 @@ body {
   flex-direction: column;
 }
 
-/* --- 导航栏：三段式 Flex 布局 --- */
+/* --- 导航栏：企业级 Flex 居中架构 --- */
 .main-header {
   background: #fff;
   box-shadow: 0 2px 10px rgba(0,0,0,0.05);
@@ -288,23 +290,30 @@ body {
   position: sticky;
   top: 0;
   z-index: 1000;
+  width: 100%;
+  /* 🚀 核心修复：开启居中容器模式 */
+  display: flex;
+  justify-content: center;
+}
 
-  .header-content {
-    max-width: 1300px;
-    margin: 0 auto;
-    height: 100%;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 0 20px;
-  }
+/* 🚀 核心修复：这是你之前缺少的布局容器，负责把三块内容排成一排 */
+.header-content {
+  width: 1300px; /* 与你的 main-container 保持一致，产生纵向对齐美感 */
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 20px;
+  box-sizing: border-box;
+  flex-shrink: 0; /* 严禁容器本身缩小 */
 }
 
 .logo-section {
   display: flex;
   align-items: center;
   cursor: pointer;
-  width: 250px; /* 固定左侧宽度，防止搜索框晃动 */
+  width: 250px; /* 固定左侧宽度 */
+  flex-shrink: 0; /* 🚀 严禁 Logo 变形 */
   .logo-icon {
     width: 38px;
     height: 38px;
@@ -322,13 +331,15 @@ body {
     font-size: 22px;
     font-weight: 800;
     color: #2c3e50;
+    white-space: nowrap; /* 🚀 强制不换行 */
     .highlight { color: #409EFF; }
   }
 }
 
 .search-section {
-  flex: 1;
+  flex: 1; /* 🚀 只有搜索框可以动态伸缩 */
   max-width: 500px;
+  min-width: 200px;
   margin: 0 40px;
   .search-input :deep(.el-input-group__append) {
     background-color: #409EFF;
@@ -345,12 +356,14 @@ body {
   align-items: center;
   justify-content: flex-end;
   width: 380px; /* 固定右侧宽度 */
+  flex-shrink: 0; /* 🚀 严禁操作区按钮挤压 */
   gap: 15px;
 
   .post-btn { font-weight: bold; }
   
   .user-trigger {
     display: flex;
+    white-space: nowrap; /* 🚀 确保欢迎语不换行 */
     align-items: center;
     gap: 8px;
     cursor: pointer;
@@ -369,6 +382,7 @@ body {
   margin: 0 auto;
   width: 100%;
   padding: 30px 20px;
+  box-sizing: border-box;
 }
 
 /* --- 页面切换动效 --- */
@@ -378,16 +392,16 @@ body {
 .page-fade-enter-from { opacity: 0; transform: translateY(15px); }
 .page-fade-leave-to { opacity: 0; transform: translateY(-15px); }
 
-/* --- 闲鱼风格下拉卡片 CSS (保持之前的高级样式) --- */
+/* --- 闲鱼风格下拉卡片 CSS --- */
 .xianyu-profile-card {
   width: 280px;
   padding: 20px;
   background: #fff;
   border-radius: 16px;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.1); /* 补全阴影增强悬浮感 */
   .card-header {
     display: flex; align-items: center; gap: 12px; margin-bottom: 20px;
-    .nickname { font-size: 18px; font-weight: 700; }
-    .stats { font-size: 12px; color: #999; b { color: #333; } }
+    .nickname { font-size: 18px; font-weight: 700; color: #333; }
   }
   .menu-rows {
     .menu-row {
@@ -415,7 +429,7 @@ body {
   text-align: center;
   color: #909399;
   font-size: 14px;
-  .footer-links { margin-top: 15px; span { cursor: pointer; &:hover { color: #409EFF; } } }
+  .footer-links { margin-top: 15px; span { cursor: pointer; margin: 0 10px; &:hover { color: #409EFF; } } }
 }
 
 :deep(.el-dropdown__popper) {

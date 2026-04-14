@@ -6,8 +6,16 @@ User = get_user_model()
 class Category(models.Model):
     """商品分类"""
     name = models.CharField(max_length=20, verbose_name="分类名称")
+    
     icon = models.CharField(max_length=50, blank=True, verbose_name="图标类名")
 
+    attribute_fields = models.JSONField(default=list, blank=True, verbose_name="扩展属性")
+    
+    
+    
+    def __str__(self):
+        return self.name
+    
     class Meta:
         verbose_name = "商品分类"
         verbose_name_plural = verbose_name
@@ -23,7 +31,7 @@ class Product(models.Model):
         ('sold', '已售出'),
         ('off', '下架'),
     )
-
+    browse_count = models.PositiveIntegerField(default=0, verbose_name="浏览次数")
     owner = models.ForeignKey(User, on_delete=models.CASCADE, related_name="products", verbose_name="发布者")
     category = models.ForeignKey(Category, on_delete=models.CASCADE, verbose_name="所属分类")
     

@@ -8,10 +8,32 @@
         </el-form-item>
         
         <el-form-item label="所属分类">
-          <el-select v-model="form.category" placeholder="请选择">
+          <el-select 
+            v-model="form.category" 
+            placeholder="请选择"
+            @change="handleCategoryChange"
+          >
             <el-option v-for="c in categories" :key="c.id" :label="c.name" :value="c.id" />
           </el-select>
         </el-form-item>
+        
+        <div v-if="dynamicFields.length > 0" class="dynamic-attr-wrapper">
+          <!-- 用分割线美化，显示当前分类名称 -->
+          <el-divider content-position="left">规格参数 ({{ selectedCatName }})</el-divider>
+          
+          <!-- 循环渲染后端 Category 传过来的 attribute_fields 数组 -->
+          <el-form-item 
+            v-for="field in dynamicFields" 
+            :key="field" 
+            :label="field"
+          >
+            <!-- 🚀 核心：双向绑定到 form.attributes 这个 JSON 对象里 -->
+            <el-input 
+              v-model="form.attributes[field]" 
+              :placeholder="'请输入' + field" 
+            />
+          </el-form-item>
+        </div>
 
         <el-form-item label="价格">
           <el-input-number v-model="form.price" :precision="2" :step="0.1" :min="0" />
@@ -66,6 +88,8 @@ const router = useRouter()
 const categories = ref([])
 const loading = ref(false)     // 用于加载旧数据时的转圈提示
 const submitting = ref(false)  // 防止重复点击提交
+const dynamicFields = ref([]) // 动态参数字段
+const selectedCatName = ref('') // 当前选中的分类名称
 
 // 通过url里有没有id来判断是发布还是编辑
 const isEdit = computed(() => !!route.params.id)
@@ -83,25 +107,52 @@ const uploadHeaders = {
   Authorization: `Bearer ${localStorage.getItem('token')}`
 }
 
-onMounted(async () => {
-  // 获取分类列表
-  const res = await getCategories()
-  categories.value = res
 
+// 处理分类选择
+const handleCategoryChange = (val) => {
+  // 从加载好的 categories 列表中找到选中的那一个
+  const cat = categories.value.find(item => item.id === val)
+  if (cat) {
+    selectedCatName.value = cat.name
+    // 获取后端配置的 attribute_fields (我们在 Category 模型里加的字段)
+    dynamicFields.value = cat.attribute_fields || []
+    
+    // 🚀 初始化属性对象：确保 form.attributes 里有这些键，防止报错
+    // 如果是“发布模式”，我们清空旧属性；如果是“编辑模式”，则保留已有值
+    if (!isEdit.value) {
+      form.attributes = {}
+      dynamicFields.value.forEach(f => {
+        form.attributes[f] = '' // 预设为空字符串
+      })
+    } else {
+      // 编辑模式下，如果新选的分类有字段在原属性里没有，补齐它
+      dynamicFields.value.forEach(f => {
+        if (!(f in form.attributes)) {
+          form.attributes[f] = ''
+        }
+      })
+    }
+  }
+}
+
+onMounted(async () => {
+  const catRes = await getCategories()
+  categories.value = catRes
 
   if (isEdit.value) {
     loading.value = true
     try {
       const detail = await getProductDetail(route.params.id)
-      // 把旧数据填进表单
-      form.title = detail.title
-      form.category = detail.category
-      form.price = parseFloat(detail.price)
-      form.desc = detail.desc
-      form.images = detail.images
-      form.attributes = detail.attributes
-    } catch (err) {
-      console.error('获取详情失败', err)
+      Object.assign(form, {
+        title: detail.title,
+        category: detail.category,
+        price: parseFloat(detail.price),
+        desc: detail.desc,
+        images: detail.images,
+        attributes: detail.attributes || {} // 🚀 确保是对象
+      })
+      // 🚀 重点：手动触发一次切换逻辑，让编辑页进来时立刻显示出那些动态输入框
+      handleCategoryChange(detail.category)
     } finally {
       loading.value = false
     }

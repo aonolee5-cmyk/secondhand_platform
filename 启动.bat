@@ -20,7 +20,7 @@ echo [2/3] 正在启动后端 Django ASGI 服务...
 start "Django-Backend" cmd /k "cd /d E:\secondhand_platform\backend && venv\Scripts\activate && python manage.py runserver"
 
 :: 给后端 3 秒钟启动时间
-timeout /t 3 /nobreak > nul
+timeout /t 2 /nobreak > nul
 
 
 :: ==================================================
