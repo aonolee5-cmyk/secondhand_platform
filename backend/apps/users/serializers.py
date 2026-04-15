@@ -103,32 +103,24 @@ class MyTokenObtainPairSerializer(TokenObtainPairSerializer):
     
 class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
     def validate(self, attrs):
+        # DRF SimpleJWT 的标准做法是先调用父类的 validate
+        # 它会自动处理 authenticate(用户名密码校验)
+        
         username = attrs.get("username")
-        password = attrs.get("password")
-
-        # 1. 手动检查用户是否存在
         user = User.objects.filter(username=username).first()
         
-        if user:
-            # 2. 如果用户存在但被封禁
-            if not user.is_active:
-                raise serializers.ValidationError({
-                    "detail": "您的账号已被系统封禁，请联系管理员处理！"
-                })
-            
-            # 3. 如果没被封禁，进行标准密码验证
-            authenticated_user = authenticate(username=username, password=password)
-            if not authenticated_user:
-                raise serializers.ValidationError({
-                    "detail": "用户名或密码错误"
-                })
-        else:
+        if user and not user.is_active:
             raise serializers.ValidationError({
-                "detail": "账号不存在"
+                "detail": "您的账号已被系统封禁，请联系管理员处理！"
             })
 
-        # 4. 验证通过，获取 Token
+        # 执行标准验证（如果密码错，这里会抛出默认的 401 错误）
         data = super().validate(attrs)
+
+        # 验证通过，获取token
         data['username'] = self.user.username
-        data['is_staff'] = self.user.is_staff
+        data['id'] = self.user.id
+        data['is_staff'] = self.user.is_staff          # 是否是运营客服（员工）
+        data['is_superuser'] = self.user.is_superuser  # 【必须增加这一行】是否是超级管理员
+        
         return data

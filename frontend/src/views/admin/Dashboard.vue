@@ -44,7 +44,7 @@
           </template>
         </el-table-column>
          <el-table-column prop="owner_name" label="发布者" />
-         <el-table-column prop="price" label="预售价" />
+         <el-table-column prop="price" label="售价" />
          <el-table-column label="操作">
            <template #default="scope">
              <el-button type="success" size="small" @click="handleAudit(scope.row.id, 'onsale')">通过</el-button>
@@ -108,7 +108,7 @@
       
       <template #footer>
         <el-button @click="auditPreviewVisible = false">关闭预览</el-button>
-        <el-button type="danger" @click="handleAudit(previewItem.id, 'off')">拒绝申请</el-button>
+        <el-button type="danger" @click="handleAudit(previewItem.id, 'off')">违规下架</el-button>
         <el-button type="success" @click="handleAudit(previewItem.id, 'onsale')">准予上架</el-button>
       </template>
     </el-dialog>
@@ -116,12 +116,13 @@
 </template>
 
 <script setup>
-import { ref, onMounted, reactive, computed } from 'vue'
+import { ref, onMounted, reactive, computed, shallowRef } from 'vue' // 🚀 引入 shallowRef 优化图例性能
 import * as echarts from 'echarts'
 import request from '@/utils/request'
 import { Money, ShoppingCart, Warning, User } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 
+// --- 状态定义 ---
 const auditPreviewVisible = ref(false)
 const previewItem = ref(null)
 const lineChartRef = ref(null)
@@ -129,6 +130,10 @@ const pieChartRef = ref(null)
 const auditList = ref([])
 const metrics = reactive({ total_gmv: 0, total_orders: 0, pending_audit: 0 })
 
+
+const charts = shallowRef({ line: null, pie: null })
+
+// --- 计算属性：顶部数据卡片 ---
 const statsCards = computed(() => [
   { title: '平台总成交额', value: metrics.total_gmv, prefix: '￥', icon: Money, color: '#f56c6c', trend: 12.5 },
   { title: '全平台订单数', value: metrics.total_orders, prefix: '', icon: ShoppingCart, color: '#409eff', trend: 8.2 },
@@ -136,30 +141,71 @@ const statsCards = computed(() => [
   { title: '新增活跃用户', value: 128, prefix: '', icon: User, color: '#67c23a', trend: 24.0 },
 ])
 
+// --- 图表初始化逻辑 ---
 const initCharts = (data) => {
-  const lineChart = echarts.init(lineChartRef.value)
-  lineChart.setOption({
-    tooltip: { trigger: 'axis' },
-    xAxis: { type: 'category', data: data.trend.map(i => i.day.split('T')[0]) },
+  // 1. 折线图：交易趋势
+  if (!charts.value.line) charts.value.line = echarts.init(lineChartRef.value)
+  charts.value.line.setOption({
+    tooltip: { trigger: 'axis', axisPointer: { type: 'cross' } },
+    grid: { left: '3%', right: '4%', bottom: '3%', containLabel: true },
+    xAxis: { type: 'category', boundaryGap: false, data: data.trend.map(i => i.day.split('T')[0]) },
     yAxis: { type: 'value' },
-    series: [{ data: data.trend.map(i => i.amount), type: 'line', smooth: true, areaStyle: { color: 'rgba(64, 158, 255, 0.1)' }, itemStyle: { color: '#409eff' } }]
+    series: [{
+      name: '交易额',
+      data: data.trend.map(i => i.amount),
+      type: 'line',
+      smooth: true,
+      lineStyle: { width: 3, color: '#409eff' },
+      areaStyle: { color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [{ offset: 0, color: 'rgba(64,158,255,0.3)' }, { offset: 1, color: 'rgba(64,158,255,0)' }]) }
+    }]
   })
 
-  const pieChart = echarts.init(pieChartRef.value)
-  pieChart.setOption({
-    tooltip: { trigger: 'item', formatter: '{b} : {c} 件 ({d}%)' },
-    legend: { orient: 'vertical', left: 'left', type: 'scroll' },
-    color: ['#5470c6', '#91cc75', '#fac858', '#ee6666', '#73c0de'],
+  // 绘制饼图
+  if (!charts.value.pie) charts.value.pie = echarts.init(pieChartRef.value)
+  const totalItems = data.categories.reduce((a, b) => a + b.prod_count, 0)
+  
+  charts.value.pie.setOption({
+    tooltip: { trigger: 'item', formatter: '{b} : {c}件 ({d}%)' },
+    legend: { 
+      type: 'scroll', // 防止种类过多挤压屏幕
+      orient: 'vertical', 
+      left: 'left', 
+      top: 'center',
+      textStyle: { fontSize: 12, color: '#999' } 
+    },
+    color: ['#5470c6', '#91cc75', '#fac858', '#ee6666', '#73c0de', '#3ba272', '#fc8452'],
     series: [{
-      type: 'pie', radius: ['45%', '70%'], avoidLabelOverlap: true,
-      itemStyle: { borderRadius: 8, borderColor: '#fff', borderWidth: 2 },
-      label: { show: true, position: 'outside', formatter: '{b}\n{d}%' },
+      name: '品类占比',
+      type: 'pie',
+      radius: ['45%', '70%'], // 环形
+      avoidLabelOverlap: true, // 避让标签，避免重叠
+      itemStyle: { borderRadius: 10, borderColor: '#fff', borderWidth: 2 },
+      label: { 
+        show: true, 
+        position: 'outside', 
+        formatter: '{b}\n{d}%',
+        fontSize: 11,
+        color: '#666'
+      },
+      labelLine: { smooth: true, length: 15, length2: 10 },
       data: data.categories.map(i => ({ name: i.name, value: i.prod_count }))
-    }]
+    }],
+    // 🚀 在环形中心显示总数，增强数据感
+    graphic: {
+      type: 'text',
+      left: 'center',
+      top: 'center',
+      style: {
+        text: '商品总计\n' + totalItems,
+        textAlign: 'center', fill: '#333', fontSize: 14, fontWeight: 'bold'
+      }
+    }
   })
 }
 
-// 核心刷新逻辑
+// --- 业务逻辑 ---
+
+// 刷新数据
 const refreshDashboardData = async () => {
   try {
     const [statsRes, prodRes] = await Promise.all([
@@ -174,7 +220,7 @@ const refreshDashboardData = async () => {
   }
 }
 
-// 🚀 修正 2：修复 handleAudit 重复定义错误
+// 审计处理逻辑
 const handleAudit = async (id, status) => {
   try {
     await request({ 
@@ -183,28 +229,44 @@ const handleAudit = async (id, status) => {
       data: { status: status } 
     })
 
+    // 1. 乐观更新列表
     auditList.value = auditList.value.filter(item => item.id !== id)
-    ElMessage.success(status === 'onsale' ? '审核通过' : '已拒绝申请')
     
-    // 操作完关闭弹窗
+    // 2. 反馈提示
+    if (status === 'onsale') {
+      ElMessage.success('商品已准予上架首页')
+    } else {
+      ElMessage.error('商品审核未通过，已驳回')
+    }
+    
+    // 3. 操作完自动关闭预览弹窗
     auditPreviewVisible.value = false
 
+    // 4. 延迟刷新大盘指标（如待审核数）
     setTimeout(() => {
       refreshDashboardData()
-    }, 300)
+    }, 400)
+    
   } catch (err) {
-    console.error('审核失败', err)
+    console.error('审核操作失败', err)
   }
 }
 
-// 打开预览弹窗
+// 打开审计预览弹窗
 const openAuditPreview = (row) => {
-  previewItem.value = row // 🚀 修正：现在 row 是完整对象了
+  previewItem.value = row
   auditPreviewVisible.value = true
 }
 
+// --- 初始化 ---
 onMounted(() => {
   refreshDashboardData()
+  
+  // 窗口缩放时自适应图表
+  window.addEventListener('resize', () => {
+    charts.value.line?.resize()
+    charts.value.pie?.resize()
+  })
 })
 </script>
 

@@ -62,40 +62,40 @@ const rules = {
 const handleLogin = () => {
   // 1. 表单预校验
   loginFormRef.value.validate(async (valid) => {
-    if (!valid) return; // 如果前端校验没通过，直接返回
+    if (!valid) return; 
 
     loading.value = true;
     try {
       // 2. 调用登录接口
       const res = await login(loginForm);
       
-      // 🚀【核心修改点】判断 res 是否存在，以及是否存在 access
-      // 这样即便 request.js 没拦截住，这里也不会报错崩溃
+      // 🚀 判断 res 是否存在，以及是否存在 access
       if (res && res.access) {
-        // 3. 存储凭证与用户信息
+        // 3. 存储凭证
         localStorage.setItem('token', res.access);
-        // 存储 username，确保 App.vue 能识别身份
+        
+        // 4. 存储用户信息（用于 App.vue 显示名字）
         localStorage.setItem('username', res.username || loginForm.username); 
-        // 存储 staff 标记，注意：localStorage 存的是字符串
+        
+        // 5. 🚀【核心补全】存储权限标签
+        // 注意：localStorage 只能存字符串，所以我们要转成 'true' 或 'false'
         localStorage.setItem('is_staff', res.is_staff ? 'true' : 'false');
+        
+        // 🔥 这一行最重要：存入超级管理员标识，驱动自定义后台的菜单过滤
+        localStorage.setItem('is_superuser', res.is_superuser ? 'true' : 'false');
         
         ElMessage.success('登录成功，欢迎回来');
         
-        // 4. 执行跳转
-        // 企业级建议：使用 window.location.href 强刷页面，彻底重置所有内存中的 Vue 状态
+        // 6. 执行跳转
+        // 使用 href 强刷页面，确保所有组件（包括 AdminLayout）重新读取最新的权限状态
         window.location.href = '/';
       } else {
-        // 如果后端返回了 200 OK 但没有 access（极少见），给予提示
         console.error('服务器返回数据格式异常:', res);
       }
 
     } catch (error) {
-      // 🚀 逻辑跳转：当账号被封禁（后端返回 400/403）时，
-      // axios 拦截器会 reject(error)，代码会自动跳到这里。
-      // 此时 res 是 undefined，if(res.access) 根本不会运行，从而避免了崩溃。
-      
-      console.log('登录受阻，详细错误信息:', error.response?.data);
-      // 具体的错误弹窗提示已经在 request.js 的拦截器里处理过了，这里保持安静即可
+      // 登录受阻逻辑（如账号封禁），由 request.js 自动弹窗提示
+      console.log('登录受阻:', error.response?.data);
     } finally {
       loading.value = false;
     }

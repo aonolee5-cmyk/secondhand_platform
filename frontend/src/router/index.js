@@ -71,6 +71,12 @@ const routes = [
       { path: 'products', name: 'AdminProducts', component: () => import('@/views/admin/ProductAudit.vue'), meta: { title: '商品审核' } },
       { path: 'sensitive', name: 'AdminSensitive', component: () => import('@/views/admin/SensitiveWords.vue'), meta: { title: '敏感词库' } },
       { path: 'users', name: 'AdminUsers', component: () => import('@/views/admin/UserList.vue'), meta: { title: '用户管理' } },
+      {
+      path: 'verify', 
+      name: 'AdminVerify',
+      component: () => import('@/views/admin/VerifyList.vue'), 
+      meta: { title: '实名认证审核' }
+    },
     ]
   }
 ]

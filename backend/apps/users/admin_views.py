@@ -19,7 +19,16 @@ class AdminUserManagementViewSet(viewsets.ModelViewSet):
         user.save()
         status_str = "正常" if user.is_active else "已封禁"
         return Response({'detail': f'用户 {user.username} 状态已变更为 {status_str}'})
-
+   
+    # 优化：增加过滤
+    def get_queryset(self):
+        queryset = User.objects.all().order_by('-date_joined')
+        # 根据前端传来的 verify_status 进行过滤
+        v_status = self.request.query_params.get('verify_status')
+        if v_status:
+            queryset = queryset.filter(verify_status=v_status)
+        return queryset
+    
 class AdminReportViewSet(viewsets.ModelViewSet):
     """企业级：违规举报处理"""
     queryset = Report.objects.all().order_by('-create_time')

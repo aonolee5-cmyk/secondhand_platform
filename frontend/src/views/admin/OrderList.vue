@@ -4,9 +4,9 @@
     <el-card>
       <div class="filter-bar">
         <el-radio-group v-model="statusFilter" @change="fetchOrders">
-          <el-radio-button label="">全部</el-radio-button>
-          <el-radio-button label="dispute">买家申请退款</el-radio-button>
-          <el-radio-button label="arbitrating">待仲裁</el-radio-button>
+          <el-radio-button value="">全部</el-radio-button>
+          <el-radio-button value="dispute">买家申请退款</el-radio-button>
+          <el-radio-button value="arbitrating">待仲裁</el-radio-button>
         </el-radio-group>
       </div>
 

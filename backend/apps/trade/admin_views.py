@@ -11,10 +11,10 @@ from goods.models import Product, Category
 from .serializers import OrderSerializer
 from rest_framework.permissions import IsAdminUser
 
-# 1. 之前漏掉或命名不一致的：订单管理与仲裁类
+# 订单管理与仲裁类
 class AdminOrderViewSet(viewsets.ModelViewSet):
     """
-    企业级后台：全站订单管理与仲裁
+    全站订单管理与仲裁
     """
     permission_classes = [IsAdminUser]
     queryset = Order.objects.all().order_by('-create_time')

@@ -30,6 +30,7 @@ class Product(models.Model):
         ('onsale', '在售'),
         ('sold', '已售出'),
         ('off', '下架'),
+        ('banned','违规下架')
     )
     browse_count = models.PositiveIntegerField(default=0, verbose_name="浏览次数")
     owner = models.ForeignKey(User, on_delete=models.CASCADE, related_name="products", verbose_name="发布者")

@@ -41,7 +41,7 @@ class ProductViewSet(viewsets.ModelViewSet):
         user = self.request.user
         query_params = self.request.query_params
         
-        if self.action in ['retrieve', 'change_status', 'update', 'partial_update', 'destroy']:
+        if self.action in ['retrieve', 'change_status', 'update', 'partial_update', 'destroy', 'force_takedown']:
             return Product.objects.all()
         
         if user.is_authenticated and user.is_staff:
@@ -57,7 +57,7 @@ class ProductViewSet(viewsets.ModelViewSet):
         # 2. 手动叠加搜索过滤
         search_kw = query_params.get('search', None)
         if search_kw:
-            print(f">>> 后端正在搜索: {search_kw}")
+            # print(f">>> 后端正在搜索: {search_kw}")
             qs = qs.filter(
                 Q(title__icontains=search_kw) | Q(desc__icontains=search_kw)
             )
@@ -73,6 +73,24 @@ class ProductViewSet(viewsets.ModelViewSet):
         
         return qs.order_by('-create_time')
 
+    def perform_update(self, serializer):
+        # 🚀 核心防护：获取数据库中【当前】的商品对象
+        instance = self.get_object()
+        user = self.request.user
+
+        # 如果商品已经是封禁状态，且不是管理员在操作
+        if instance.status == 'banned' and not user.is_staff:
+            raise ValidationError({'detail': '该商品已被管理员封禁，无法进行操作！'})
+
+        if instance.staus == 'audit' and user.is_staff:
+           raise ValidationError({'detail': '该商品正在审核中，请勿重复操作！如需修改请先撤回申请。'}) 
+         
+        
+        if not user.is_staff:
+            serializer.save(owner=user, status='audit')
+        else:
+            serializer.save()
+    
     # 上传图片
     @action(detail=False, methods=['post'])
     def upload_image(self, request):
@@ -87,12 +105,56 @@ class ProductViewSet(viewsets.ModelViewSet):
     def change_status(self, request, pk=None):
         product = self.get_object()
         new_status = request.data.get('status')
-        if new_status in ['onsale', 'off', 'sold', 'audit']:
+        user = request.user
+        
+        if product.status == 'banned' and not user.is_staff:
+            return Response({'detail': '商品已被强制下架，无法操作'}, status=403)
+        
+        if not user.is_staff:
+            if new_status not in ['onsale', 'off']:
+                return Response({'detail': '无权切换至该状态'}, status=403)
+            
+            # 普通用户上架，强制进入审核态
+            if new_status == 'onsale':
+                new_status = 'audit'
+
+        valid_statuses = [choice[0] for choice in Product.STATUS_CHOICES]
+        if new_status in valid_statuses:
             product.status = new_status
             product.save()
-            return Response({'status': 'success'})
-        return Response({'error': '状态非法'}, status=400)
+            return Response({'detail': '状态更新成功', 'current_status': product.status})
+        
+        return Response({'detail': '无效的状态值'}, status=403)
 
+    @action(detail=True, methods=['post'])
+    def force_takedown(self, request, pk=None):
+        '''
+        强制下架（处理在售，被举报并被证实的违规商品）
+        '''
+        product = self.get_object()
+        user = request.user
+        reason = request.data.get('reason', '经核实，该商品违反平台交易守则')
+
+        # 只有 Staff (运营客服) 和 Admin 才能执行
+        if not user.is_staff:
+            return Response({'detail': '权限不足，无法执行治理操作'}, status=403)
+
+        # 强制将状态转为 banned (封禁)
+        product.status = 'banned'
+        # 在商品描述前追加封禁理由，作为“存证”
+        product.desc = f"【系统禁售提示：{reason}】\n" + product.desc
+        product.save()
+
+        # 可以在这里增加其他联动逻辑，比如：扣除卖家信用分
+        seller = product.owner
+        seller.credit_score -= 10
+        seller.save()
+
+        return Response({
+            'detail': '商品已执行强制下架，并已扣除卖家信用分',
+            'current_status': 'banned'
+        })
+    
     # 发布逻辑，增加敏感词检测
     def perform_create(self, serializer):
         title = self.request.data.get('title', '')
@@ -110,7 +172,7 @@ class ProductViewSet(viewsets.ModelViewSet):
             return [AllowAny()]
         # 其他操作（如发布宝贝、修改、删除），必须登录
         return [permissions.IsAuthenticated()]
-    
+# 敏感词检测    
 def check_sensitive_words(content):
     dfa = DFAFilter()
     words = SensitiveWord.objects.values_list('word', flat=True)

@@ -17,7 +17,7 @@ class ProductSerializer(serializers.ModelSerializer):
     class Meta:
         model = Product
         fields = '__all__'
-        read_only_fields = ('owner', 'status', 'create_time')
+        read_only_fields = ('owner', 'status', 'create_time', 'browse_count')
     
     def get_is_favorited(self, obj):
         from trade.models import Favorite

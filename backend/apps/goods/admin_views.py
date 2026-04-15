@@ -1,16 +1,18 @@
 from rest_framework import viewsets, permissions
 from .models import Product, SensitiveWord
-from .serializers import ProductSerializer, SensitiveWordSerializer # 需定义
+from .serializers import ProductSerializer, SensitiveWordSerializer 
 from rest_framework.decorators import action
 from rest_framework import viewsets, permissions, filters
+from users.permissions import IsOperationalManager, IsSystemAdmin
+
 
 class AdminProductViewSet(viewsets.ModelViewSet):
     """
-    企业级商品治理：审核、强行下架
+    商品管理：审核、强行下架
     """
     queryset = Product.objects.all().order_by('-create_time')
     serializer_class = ProductSerializer
-    permission_classes = [permissions.IsAdminUser]
+    permission_classes = [IsOperationalManager]
 
     # 自定义过滤：只看待审核商品
     def get_queryset(self):
@@ -32,7 +34,7 @@ class AdminSensitiveWordViewSet(viewsets.ModelViewSet):
     敏感词库
     """
     queryset = SensitiveWord.objects.all().order_by('-create_time')
-    serializer_class = SensitiveWordSerializer # 确保你定义了对应的 Serializer
-    permission_classes = [permissions.IsAdminUser]
+    serializer_class = SensitiveWordSerializer 
+    permission_classes = [IsSystemAdmin]
     filter_backends = [filters.SearchFilter]
     search_fields = ['word'] # 支持前端搜索

@@ -2,6 +2,8 @@ import os
 import django
 import random
 from decimal import Decimal
+import requests
+
 
 # 1. 初始化 Django 环境
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'core.settings')
