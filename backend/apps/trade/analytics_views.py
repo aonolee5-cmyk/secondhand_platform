@@ -1,78 +1,89 @@
-# backend/apps/trade/analytics_views.py
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from django.db.models import Sum, Count, Q
+from rest_framework.permissions import IsAdminUser
+from django.db.models import Sum, Count
 from django.db.models.functions import TruncDay
 from datetime import datetime, timedelta
+from django.utils import timezone
 from .models import Order
 from goods.models import Product, Category
 
 class AdminDashboardStatsView(APIView):
     """
-    企业级管理大盘数据接口：支持动态日期范围分析
+    企业级管理后台大盘统计接口
+    支持自定义时间范围查询，并自动执行时序数据补零逻辑
     """
-    # 建议取消注释以确保安全
-    # from rest_framework.permissions import IsAdminUser
-    # permission_classes = [IsAdminUser] 
+    permission_classes = [IsAdminUser] 
 
     def get(self, request):
-        # 1. 🚀 获取并解析前端传来的日期参数
-        start_str = request.query_params.get('start_date')
-        end_str = request.query_params.get('end_date')
+        # 1. 解析日期范围参数
+        start_str = request.query_params.get('start_date', '').strip()
+        end_str = request.query_params.get('end_date', '').strip()
 
         try:
-            if start_str and end_str:
-                # 解析前端传来的 YYYY-MM-DD 格式
+            if start_str and end_str and start_str != 'null':
                 start_date = datetime.strptime(start_str, '%Y-%m-%d').date()
                 end_date = datetime.strptime(end_str, '%Y-%m-%d').date()
             else:
-                # 默认逻辑：显示最近 7 天（包含今天）
-                end_date = datetime.now().date()
+                # 默认展示近 7 天数据
+                end_date = timezone.now().date()
                 start_date = end_date - timedelta(days=6)
-        except ValueError:
-            return Response({'detail': '日期格式错误，请使用 YYYY-MM-DD'}, status=400)
+        except (ValueError, TypeError):
+            return Response({'detail': '日期格式不合法，请输入 YYYY-MM-DD 格式'}, status=400)
 
-        # 2. 🚀 构建核心过滤查询集 (Base Queryset)
-        # 我们只统计指定日期范围内产生的订单
-        range_orders = Order.objects.filter(create_time__date__range=[start_date, end_date])
+        # 2. 获取指定范围内的已支付订单数据集
+        range_orders = Order.objects.filter(
+            create_time__date__gte=start_date,
+            create_time__date__lte=end_date,
+            status='paid'
+        )
 
-        # 3. 核心指标统计 (Key Metrics)
-        # 总成交额仅计算已支付的订单
-        total_gmv = range_orders.filter(status='paid').aggregate(total=Sum('total_amount'))['total'] or 0
-        total_orders = range_orders.count()
-        # 待审核商品是全局属性，不随日期变动，方便管理员随时处理
-        pending_audit = Product.objects.filter(status='audit').count()
-
-        # 4. 交易趋势图数据 (Trend Data)
-        # 按天聚合，统计每天的成交总额和订单量
-        trend_data = (
+        # 3. 按日聚合交易金额
+        db_data = (
             range_orders
             .annotate(day=TruncDay('create_time'))
             .values('day')
-            .annotate(amount=Sum('total_amount'), count=Count('id'))
+            .annotate(amount=Sum('total_amount'))
             .order_by('day')
         )
 
-        # 5. 品类占比统计 (Pie Chart)
-        # 亮点逻辑：统计在该时间段内“卖得最好”的品类分布
-        category_stats = (
-            Category.objects.annotate(
-                prod_count=Count(
-                    'product', 
-                    filter=Q(product__order__in=range_orders.filter(status='paid'))
-                )
-            ).values('name', 'prod_count')
+        # 4. 构建日期映射字典，用于快速查找
+        data_map = {res['day'].strftime('%Y-%m-%d'): float(res['amount']) for res in db_data}
+        
+        # 5. 执行时序填充算法：确保时间轴连续，无数据日期自动补 0
+        final_trend = []
+        current_date = start_date
+        while current_date <= end_date:
+            date_str = current_date.strftime('%Y-%m-%d')
+            final_trend.append({
+                'day': date_str,
+                'amount': data_map.get(date_str, 0)
+            })
+            current_date += timedelta(days=1)
+
+        # 6. 统计全局及核心业务指标
+        total_gmv = range_orders.aggregate(total=Sum('total_amount'))['total'] or 0
+        total_orders = range_orders.count()
+        pending_audit = Product.objects.filter(status='audit').count()
+
+        # 7. 品类分布统计
+        category_stats = list(
+            Category.objects.annotate(prod_count=Count('product'))
+            .values('name', 'prod_count')
         )
 
-        # 6. 响应数据组装
+        # 8. 统一响应格式
         return Response({
             'metrics': {
-                'total_gmv': float(total_gmv),
+                'total_gmv': round(float(total_gmv), 2),
                 'total_orders': total_orders,
-                'pending_audit': pending_audit,
-                'start_date': start_date, # 返回确认的日期给前端
-                'end_date': end_date
+                'pending_audit': pending_audit
             },
-            'trend': trend_data,
-            'categories': category_stats
+            'trend': final_trend,
+            'categories': category_stats,
+            'meta': {
+                'start_date': str(start_date),
+                'end_date': str(end_date),
+                'data_points': len(final_trend)
+            }
         })

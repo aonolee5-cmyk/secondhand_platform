@@ -4,8 +4,14 @@ import router from './router'
 import { createPinia } from 'pinia'
 import * as ElementPlusIconsVue from '@element-plus/icons-vue'
 import 'element-plus/dist/index.css'
+import ElementPlus from 'element-plus'
+import zhCn from 'element-plus/dist/locale/zh-cn.mjs'
 
 const app = createApp(App)
+
+app.use(ElementPlus, {
+  locale: zhCn, // 设置中文语言包
+})
 
 // 注册所有图标
 for (const [key, component] of Object.entries(ElementPlusIconsVue)) {
