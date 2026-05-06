@@ -14,7 +14,7 @@ from django.contrib.auth import get_user_model
 
 User = get_user_model()
 
-# 🚀 辅助函数：根据你的真实分类获取匹配的图片
+
 def get_real_image_url(cat_name):
     keyword_map = {
         "数码产品": "iphone,laptop,camera",

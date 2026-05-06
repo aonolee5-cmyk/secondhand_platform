@@ -30,13 +30,12 @@
       <el-table-column label="操作" width="260"> 
         <template #default="scope">
           
-          <!-- 🚀 场景 1：被违规封禁 -->
           <div v-if="scope.row.status === 'banned'">
              <el-tag type="danger" effect="dark" style="margin-right: 10px">违规封禁</el-tag>
              <el-button size="small" type="primary" @click="$router.push('/edit/' + scope.row.id)">修改申诉</el-button>
           </div>
 
-          <!-- 🚀 场景 2：正在审核中 (体现企业级逻辑：只读，允许撤回) -->
+
           <div v-else-if="scope.row.status === 'audit'">
             <el-button-group>
               <el-button size="small" type="info" plain @click="$router.push('/product/' + scope.row.id)">预览</el-button>
@@ -45,12 +44,12 @@
             <p style="font-size: 12px; color: #999; margin: 5px 0 0">审核期间不可修改信息</p>
           </div>
 
-          <!-- 🚀 场景 3：已售出 或 交易锁定 -->
+
           <div v-else-if="['locked', 'sold'].includes(scope.row.status)">
             <el-button size="small" type="info" plain @click="$router.push('/order-detail/' + scope.row.id)">查看交易</el-button>
           </div>
 
-          <!-- 🚀 场景 4：正常状态 (在售 或 用户主动下架) -->
+
           <div v-else>
             <el-button-group>
               <!-- 在售显示下架 -->
@@ -92,7 +91,7 @@ import { ElMessage } from 'element-plus'
 const router = useRouter() 
 const myProducts = ref([])
 
-// 🚀 完善状态映射表，加入 banned
+
 const statusMap = {
   'audit': { text: '审核中', type: 'info' },
   'onsale': { text: '在售中', type: 'success' },
@@ -104,7 +103,6 @@ const statusMap = {
 
 const loadMyData = async () => {
   const res = await getMyProducts()
-  // 确保数据渲染正常
   myProducts.value = res.results || res || []
 }
 

@@ -23,9 +23,10 @@ class User(AbstractUser):
     )
     
     verify_status = models.SmallIntegerField(choices=VERIFY_STATUS_CHOICES, default=0, verbose_name="实名认证状态")
+    verify_time = models.DateTimeField(null=True, blank=True, verbose_name="实名认证申请时间")
     
     # 信用分
-    credit_score = models.IntegerField(default=100, verbose_name="信用分")
+    credit_score = models.IntegerField(default=70, verbose_name="信用分")
     @property
     def credit_level(self):
         ''' 根据信用分计算信用等级'''
@@ -80,3 +81,27 @@ class Report(models.Model):
     class Meta:
         verbose_name = "违规举报"
         verbose_name_plural = verbose_name
+        
+        
+class CreditLog(models.Model):
+    '''
+    信用分日志模型
+    '''
+    
+    ACTION_TYPES = (
+        ('profile', '完善资料'),
+        ('verify', '实名认证'),
+        ('post_product', '发布商品'),
+        ('trade_done', '完成交易'),
+        ('review_done', '评价商品'),
+        ('penalty', '违规处罚'),
+    )
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="credit_logs")
+    amount = models.IntegerField(verbose_name="分值变动")
+    reason = models.CharField(max_length=100, verbose_name="变动原因")
+    action_type = models.CharField(max_length=20, choices=ACTION_TYPES)
+    create_time = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = "users_credit_log"
+        ordering = ['-create_time']

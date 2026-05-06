@@ -21,7 +21,6 @@
         </el-table>
       </el-card>
     </div>
-  <!-- 🚀 地址选择弹窗 (直接复用详情页的逻辑) -->
   <el-dialog v-model="addressVisible" title="确认收货信息" width="500px">
     <div class="address-selector">
       <el-radio-group v-model="selectedAddressId" style="width: 100%">
@@ -69,7 +68,7 @@ const addressList = ref([])
 const selectedAddressId = ref(null)
 const currentOrderProduct = ref(null) 
 
-// 1. 加载购物车数据
+// 加载购物车数据
 const loadCart = async () => {
   try {
     const res = await request({ url: '/trade/cart/', method: 'get' })
@@ -79,12 +78,11 @@ const loadCart = async () => {
   }
 }
 
-// 2. 立即下单逻辑：准备阶段
+// 立即下单逻辑：准备阶段
 const goToCheckout = async (item) => {
   currentOrderProduct.value = item
   try {
     const res = await getAddresses()
-    // 🚀 修正：统一使用 results 兼容分页
     addressList.value = res.results || res.data?.results || res
 
     if (addressList.value.length === 0) {
@@ -102,7 +100,7 @@ const goToCheckout = async (item) => {
   }
 }
 
-// 3. 🚀 核心：确认下单并执行跳转
+// 核心：确认下单并执行跳转
 const confirmOrder = async () => {
   const chosenAddress = addressList.value.find(a => a.id === selectedAddressId.value)
   
@@ -120,7 +118,6 @@ const confirmOrder = async () => {
     // 调用后端下单接口
     const res = await createOrder(orderData)
     
-    // 🔍 DEBUG 打印：如果还是跳不走，按 F12 看这里打印的内容
     console.log('下单接口返回全量数据:', res)
 
     // 兼容多种数据结构获取 ID
@@ -129,10 +126,8 @@ const confirmOrder = async () => {
     if (orderId) {
       ElMessage.success('订单已创建，转向支付页...')
       addressVisible.value = false
-      // 🚀 跳转到支付页面
       router.push(`/payment/${orderId}`) 
     } else {
-      // 如果后端没给 ID，作为备选方案跳到订单页
       ElMessage.warning('下单成功，请在订单中心支付')
       router.push('/orders')
     }

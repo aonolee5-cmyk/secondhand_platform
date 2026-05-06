@@ -4,7 +4,7 @@
       <h3 class="title">我的收藏 ({{ favoriteList.length }})</h3>
     </div>
 
-    <!-- 📦 收藏列表 -->
+    <!-- 收藏列表 -->
     <el-row :gutter="20" v-if="favoriteList.length > 0">
       <el-col :span="6" v-for="item in favoriteList" :key="item.id">
         <el-card class="fav-card" :body-style="{ padding: '0px' }">
@@ -34,7 +34,7 @@
       </el-col>
     </el-row>
 
-    <!-- 🏜️ 空状态 -->
+    <!-- 空状态 -->
     <el-empty v-else description="还没有收藏任何宝贝哦，去首页逛逛吧" :image-size="200">
       <el-button type="primary" round @click="$router.push('/')">去逛逛</el-button>
     </el-empty>

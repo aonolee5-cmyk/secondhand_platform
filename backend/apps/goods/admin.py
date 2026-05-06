@@ -10,11 +10,8 @@ class CategoryAdmin(admin.ModelAdmin):
 class ProductAdmin(admin.ModelAdmin):
     # 后台列表显示的字段
     list_display = ('title', 'owner', 'price', 'category', 'status', 'create_time')
-    # 右侧过滤器
     list_filter = ('status', 'category')
-    # 搜索框
     search_fields = ('title', 'desc')
-    # 可以在列表页直接编辑的字段
     list_editable = ('status', 'price')
     
 @admin.register(SensitiveWord)

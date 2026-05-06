@@ -30,12 +30,7 @@ class IsSystemAdmin(permissions.BasePermission):
         )
 
 class ActionBasedPermission(permissions.AllowAny):
-    """
-    【高级：基于动作的混合权限】
-    如果你想在一个 ViewSet 里针对不同操作给不同权限，可以用这个。
-    """
     def has_permission(self, request, view):
-        # 举例：查看列表（list）普通客服就能干，但删除（destroy）必须超级管理员
         if view.action in ['list', 'retrieve']:
             return IsOperationalManager().has_permission(request, view)
         elif view.action in ['destroy', 'update', 'partial_update']:

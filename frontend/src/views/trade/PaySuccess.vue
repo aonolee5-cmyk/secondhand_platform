@@ -3,7 +3,6 @@
     <el-result icon="success" title="支付成功" sub-title="订单已支付，请耐心等待卖家发货">
       <template #extra>
         <div class="btn-group">
-          <!-- 🚀 核心：跳转到具体的详情路由 -->
           <el-button type="primary" @click="$router.push('/user/orders')">查看该订单</el-button>
           <el-button @click="$router.push('/')">继续逛逛</el-button>
         </div>
@@ -20,8 +19,6 @@ const route = useRoute()
 const router = useRouter()
 
 const viewThisOrder = () => {
-  // 🚀 强行从当前浏览器地址栏抓取 ?id= 后面的值
-  // 这是为了防止 Vue Router 的 query 对象反应迟钝
   const urlParams = new URLSearchParams(window.location.search);
   const orderId = urlParams.get('id') || route.query.id;
 
@@ -30,7 +27,6 @@ const viewThisOrder = () => {
   console.log("从路由对象拿到的 ID:", route.query.id);
 
   if (orderId && orderId !== 'undefined') {
-    // 成功拿到，去详情页
     router.push(`/order-detail/${orderId}`);
   } else {
     ElMessage.error('抱歉，未能获取该订单详情，请在列表查看');

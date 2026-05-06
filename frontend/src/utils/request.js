@@ -28,9 +28,8 @@ service.interceptors.response.use(
   async (error) => {
     const { config, response } = error
     
-    // 🚀 处理 401 身份过期
+    // 处理 401 身份过期
     if (response && response.status === 401) {
-      // 如果是登录接口报 401，说明密码错或账号封禁，直接报错
       if (config.url.includes('/users/login/')) {
         return handleGeneralError(error)
       }
@@ -57,7 +56,6 @@ service.interceptors.response.use(
           
           localStorage.setItem('token', newToken)
           
-          // 🚀 核心：执行队列中所有的请求
           requestsQueue.forEach((callback) => callback(newToken))
           requestsQueue = [] // 清空队列
           
@@ -65,7 +63,6 @@ service.interceptors.response.use(
           config.headers['Authorization'] = `Bearer ${newToken}`
           return service(config)
         } catch (refreshError) {
-          // 刷新失败（Refresh Token 也过期了），彻底清除状态并跳回登录
           requestsQueue = []
           localStorage.clear()
           // 加上标记防止循环跳转
@@ -83,7 +80,6 @@ service.interceptors.response.use(
       }
     }
 
-    // 2. 处理常规错误 (400 封禁, 403 权限不足, 500 服务器错误)
     return handleGeneralError(error)
   }
 )
@@ -92,7 +88,6 @@ service.interceptors.response.use(
  * 核心：通用错误提示处理
  */
 function handleGeneralError(error) {
-  // 🚀 防抖处理：如果已经在刷新或跳转中，不弹出多余的错误提示
   if (isRefreshing) return Promise.reject(error)
 
   let message = '系统未知错误'

@@ -1,13 +1,10 @@
 <template>
   <div class="alipay-simulator">
     <el-card class="alipay-card">
-      <!-- 支付宝经典蓝色头部 -->
       <div class="alipay-header">
-        <img src="https://img.icons8.com/color/48/alipay.png" class="ali-logo" />
-        <span class="ali-text">支付宝 | 官方安全支付</span>
+        <span class="ali-text">安全支付</span>
       </div>
 
-      <!-- 🚀 修正点 1：去掉末尾的 / 符号，让 div 包含下面的内容 -->
       <div class="pay-main-content"> 
         <div class="order-brief">
           <p class="desc">正在向 <strong>{{ orderInfo.seller_name || '获取中...' }}</strong> 发起付款</p>
@@ -20,7 +17,6 @@
 
         <el-divider>请使用支付宝扫码支付</el-divider>
 
-        <!-- 🚀 核心模拟：动态生成的“支付二维码” -->
         <div class="qr-container" v-loading="paying">
           <div class="qr-box">
              <el-image 
@@ -46,7 +42,7 @@
             {{ paying ? '正在与银行中心通信...' : '确认付款' }}
           </el-button>
 
-          <!-- 🚀 修正点 2：将路径改为 /user/orders -->
+
           <el-link 
             type="info" 
             @click="$router.push('/user/orders')" 
@@ -55,7 +51,7 @@
             返回订单中心
           </el-link>
         </div>
-      </div> <!-- 🚀 对应第 12 行的结束标签 -->
+      </div> 
     </el-card>
 
     <!-- 支付中的全屏 Loading -->
@@ -80,7 +76,7 @@ const paying = ref(false)
 const paySuccess = ref(false)
 const showProcessing = ref(true)
 
-// 初始化页面：模拟网络延迟加载
+// 初始化页面
 onMounted(async () => {
   setTimeout(async () => {
     try {
@@ -90,25 +86,22 @@ onMounted(async () => {
     } catch (err) {
       router.push('/orders')
     }
-  }, 800) // 模拟一个加载过程
+  }, 800) 
 })
 
-// 🚀 核心模拟逻辑：分步执行支付
+// 模拟支付
 const simulatePayment = async () => {
   paying.value = true
-  
-  // 第一步：模拟与支付宝网关的通讯耗时
   await new Promise(resolve => setTimeout(resolve, 1500))
   
   try {
-    // 第二步：正式请求后端修改数据库状态
     await request({ url: `/trade/orders/${route.params.id}/pay/`, method: 'post' })
     
-    // 第三步：展示前端成功反馈
+
     paySuccess.value = true
     ElMessage.success('支付宝扣款成功')
     
-    // 第四步：延迟跳转（给用户看一眼成功状态，增加真实感）
+
     setTimeout(() => {
       router.push({
         path: '/pay-success',
@@ -135,7 +128,7 @@ const simulatePayment = async () => {
 .alipay-card {
   width: 450px;
   border-radius: 4px;
-  border-top: 4px solid #00a0e9; // 支付宝蓝
+  border-top: 4px solid #00a0e9; 
   .alipay-header {
     display: flex;
     align-items: center;

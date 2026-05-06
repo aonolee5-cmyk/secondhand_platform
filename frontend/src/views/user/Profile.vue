@@ -1,6 +1,5 @@
 <template>
   <div class="profile-content">
-    <!-- 1. 顶部 Header 区 (闲鱼风格：大背景 + 悬浮信息) -->
     <div class="user-header-banner">
       <div class="user-info-box">
         <el-upload
@@ -38,7 +37,7 @@
       </div>
     </div>
 
-    <!-- 2. 底部功能区 (Tab选项卡) -->
+    <!--  底部功能区  -->
     <div class="tabs-container">
       <el-tabs v-model="activeTab" class="custom-tabs">
         
@@ -46,7 +45,6 @@
         <el-tab-pane label="宝贝" name="goods">
           <div v-loading="loadingProducts" class="goods-content">
             
-            <!-- 情况 A: 有商品时，展示美观的卡片网格 -->
             <el-row :gutter="20" v-if="myProducts.length > 0">
               <el-col :span="8" v-for="item in myProducts" :key="item.id" style="margin-bottom: 20px">
                 <el-card :body-style="{ padding: '0px' }" class="mini-product-card" shadow="hover">
@@ -57,7 +55,6 @@
                       fit="cover" 
                       class="prod-img"
                     />
-                    <!-- 浮动状态标签：增加视觉高级感 -->
                     <el-tag 
                       class="status-tag" 
                       :type="item.status === 'onsale' ? 'success' : 'info'" 
@@ -78,7 +75,7 @@
               </el-col>
             </el-row>
 
-            <!-- 情况 B: 真的没商品时 -->
+
             <el-empty v-else description="您还没有发布过任何宝贝哦" :image-size="120">
               <el-button type="primary" round @click="$router.push('/post')">去发布一个</el-button>
             </el-empty>
@@ -86,7 +83,7 @@
           </div>
         </el-tab-pane>
 
-        <!-- 标签页：信用及评价 (企业级信用大盘) -->
+        <!-- 信用及评价  -->
         <el-tab-pane label="信用及评价" name="credit">
           <div class="credit-card-dashboard">
             <div class="credit-main">
@@ -94,15 +91,40 @@
               <div class="score-label">平台信用评分</div>
               <el-rate :model-value="creditStar" disabled />
             </div>
-            <el-divider direction="vertical" />
-            <div class="credit-details">
-              <p>信用等级：<strong>{{ getCreditLevel(user.credit_score) }}</strong></p>
-              <p class="tip">评分基于成交率、评价权重及合规记录综合计算</p>
+            <div class="credit-history-section" style="margin-top: 30px;">
+              <div class="section-title">
+                <el-icon><Histogram /></el-icon> 信用成长足迹
+              </div>
+              
+              <el-table :data="creditLogs" size="small" class="history-table" v-loading="loadingLogs">
+                <el-table-column prop="create_time" label="记录时间" width="180">
+                  <template #default="scope">
+                    {{ formatDate(scope.row.create_time) }}
+                  </template>
+                </el-table-column>
+                <el-table-column prop="reason" label="变动事项" />
+                <el-table-column label="分值变动" width="120" align="center">
+                  <template #default="scope">
+                    <span :class="scope.row.amount > 0 ? 'score-up' : 'score-down'">
+                      {{ scope.row.amount > 0 ? '+' : '' }}{{ scope.row.amount }}
+                    </span>
+                  </template>
+                </el-table-column>
+              </el-table>
+              
+              <div class="credit-tips">
+                <el-alert 
+                  title="信用分说明：上限 100 分。成功发布商品、完成交易及优质评价均可获得信用奖励。" 
+                  type="info" 
+                  :closable="false" 
+                  show-icon 
+                />
+              </div>
             </div>
           </div>
-        </el-tab-pane>
+          </el-tab-pane>
 
-        <!-- 标签页：收货地址 (保留原有逻辑) -->
+
         <el-tab-pane label="地址管理" name="address">
           <div class="address-header">
             <el-button type="primary" :icon="Plus" @click="openAddressDialog">新增收货地址</el-button>
@@ -119,18 +141,19 @@
             <el-table-column label="操作" width="180" align="right">
               <template #default="scope">
                 <el-button link type="primary" v-if="!scope.row.is_default" @click="handleSetDefault(scope.row.id)">设为默认</el-button>
+                <el-button link type="primary" @click="handleEditAddress(scope.row)">编辑</el-button>
                 <el-button link type="danger" @click="handleDeleteAddress(scope.row.id)">删除</el-button>
               </template>
             </el-table-column>
           </el-table>
         </el-tab-pane>
 
-        <!-- 标签页：账号设置 (包含个人资料修改 + 实名认证) -->
-        <el-tab-pane label="账号与安全" name="settings">
+
+        <el-tab-pane label="个人资料" name="settings">
           <el-collapse v-model="activeCollapse">
             <el-collapse-item title="基本资料修改" name="1">
               <el-form :model="user" label-width="100px" style="max-width: 500px">
-                <el-form-item label="个性昵称"><el-input v-model="user.nickname" /></el-form-item>
+                <el-form-item label="用户名"><el-input v-model="user.nickname" /></el-form-item>
                 <el-form-item label="个性签名"><el-input v-model="user.bio" type="textarea" /></el-form-item>
                 <el-form-item><el-button type="primary" @click="handleUpdate">保存资料</el-button></el-form-item>
               </el-form>
@@ -158,8 +181,8 @@
       </el-tabs>
     </div>
 
-    <!-- 地址弹窗 (保留原有逻辑) -->
-    <el-dialog v-model="addressDialogVisible" title="新增收货地址" width="500px">
+
+    <el-dialog v-model="addressDialogVisible" :title="isEdit ?  '修改收货地址' :'新增收货地址' " width="500px">
       <el-form :model="addressForm" label-width="80px">
         <el-form-item label="收货人"><el-input v-model="addressForm.receiver" /></el-form-item>
         <el-form-item label="手机号"><el-input v-model="addressForm.mobile" /></el-form-item>
@@ -179,76 +202,104 @@
 
 <script setup>
 import { ref, onMounted, reactive, computed } from 'vue'
+import request from '@/utils/request' 
 import { 
   getProfile, updateProfile, updateAvatar, submitVerify, 
-  getAddresses, addAddress, deleteAddress, setDefaultAddress 
+  getAddresses, addAddress, deleteAddress, setDefaultAddress, updateAddress 
 } from '@/api/user'
 import { ElMessage } from 'element-plus'
-import { Camera, Plus, CircleCheck, EditPen } from '@element-plus/icons-vue'
-import { regionData, codeToText } from 'element-china-area-data'
+import { 
+  Camera, Plus, CircleCheck, EditPen, Goods, 
+  User, Star, Setting, Histogram 
+} from '@element-plus/icons-vue'
+import { regionData, codeToText } from 'element-china-area-data' 
 import { getMyProducts } from '@/api/goods' 
 
+
+
 // --- 状态数据 ---
-const user = ref({ credit_score: 0, avatar:'', nickname:'', mobile:'', bio:'', verify_status:''})
+const user = ref({ credit_score: 70, avatar:'', nickname:'', mobile:'', bio:'', verify_status:0})
 const activeTab = ref('goods')
 const activeCollapse = ref(['1', '2'])
 const addressesList = ref([])
 const addressDialogVisible = ref(false)
 const verifying = ref(false)
 const verifyFormRef = ref(null)
-const creditStar = computed(() => user.value.credit_score / 20)
 const myProducts = ref([])
+const creditLogs = ref([]) 
+const loadingProducts = ref(false)
+const loadingLogs = ref(false)
+
+const isEdit = ref(false)
+const editId = ref(null)
+
 const verifyForm = reactive({ real_name: '', id_card: '' })
 const addressForm = reactive({ receiver: '', mobile: '', regionCode:[], detail: '', is_default: false })
-const loadingProducts = ref(false)
 
-const loadAddresses = async () => { 
-  const res = await getAddresses()
-  addressesList.value = res.results || res 
-}
-onMounted(() => { 
-  loadProfile()
-  loadAddresses() 
+
+const creditStar = computed(() => user.value.credit_score / 20)
+
+const fullAvatarUrl = computed(() => {
+  if (!user.value.avatar) return ''
+  if (user.value.avatar.startsWith('http')) return user.value.avatar
+  return `http://127.0.0.1:8000${user.value.avatar}`
 })
+
+
+
+
+const initData = async () => {
+  try {
+    const profileRes = await getProfile()
+    user.value = { ...profileRes }
+    creditLogs.value = profileRes.credit_logs || [] 
+
+    // 获取该用户的商品列表
+    loadingProducts.value = true
+    const prodRes = await getMyProducts()
+    myProducts.value = prodRes.results || prodRes
+    
+    // 获取地址列表
+    const addrRes = await getAddresses()
+    addressesList.value = addrRes.results || addrRes
+    
+  } catch (err) {
+    console.error('数据加载失败', err)
+  } finally {
+    loadingProducts.value = false
+  }
+}
+
+
+const refreshProfile = async () => {
+  const res = await getProfile()
+  user.value = { ...res }
+}
+
+// 格式化时间函数
+const formatDate = (dateStr) => {
+  if (!dateStr) return ''
+  const date = new Date(dateStr)
+  return `${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, '0')}-${date.getDate().toString().padStart(2, '0')} ${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`
+}
 
 const handleUpdate = async () => {
   await updateProfile({ 
     nickname: user.value.nickname, 
     mobile: user.value.mobile, 
-    bio: user.value.bio })
-  ElMessage.success('资料保存成功'); loadProfile() 
+    bio: user.value.bio 
+  })
+  ElMessage.success('资料保存成功')
+  refreshProfile() 
 }
 
-
-const fullAvatarUrl = computed(() => {
-  if (!user.value.avatar) return ''
-  // 如果后端直接返回了完整 http 路径则直接用
-  if (user.value.avatar.startsWith('http')) return user.value.avatar
-  // 否则拼接后端服务器地址
-  return `http://127.0.0.1:8000${user.value.avatar}`
-})
-
-
-// --- 逻辑函数 ---
-const loadProfile = async () => { 
-  try {
-    const res = await getProfile()
-    // 🚀 核心修复 2：确保赋值时能够触发响应式更新
-    user.value = { ...res } 
-    console.log("用户信息加载成功:", user.value)
-  } catch (err) {
-    console.error("加载失败", err)
-  }
-}
-
-// 头像上传逻辑
 const handleAvatarUpload = async (options) => { 
   const formData = new FormData()
   formData.append('avatar', options.file)
   try {
-    const res = await updateAvatar(formData)
+    await updateAvatar(formData)
     ElMessage.success('头像已更新')
-    await loadProfile() 
+    refreshProfile() 
   } catch (err) {
     ElMessage.error('头像上传失败')
   }
@@ -272,7 +323,7 @@ const handleVerify = () => {
     try {
       await submitVerify(verifyForm)
       ElMessage.success('已提交申请')
-      user.value.verify_status = 1
+      refreshProfile()
     } finally { verifying.value = false }
   })
 }
@@ -280,35 +331,51 @@ const handleVerify = () => {
 const submitAddress = async () => {
   const regionText = addressForm.regionCode.map(code => codeToText[code]).join(' ')
   await addAddress({ ...addressForm, region: regionText })
-  addressDialogVisible.value = false; loadAddresses()
+  addressDialogVisible.value = false
+  initData() // 刷新列表
 }
 
-const handleDeleteAddress = async (id) => { await deleteAddress(id); loadAddresses() }
-const handleSetDefault = async (id) => { await setDefaultAddress(id); loadAddresses() }
+const handleDeleteAddress = async (id) => { await deleteAddress(id); initData() }
+const handleSetDefault = async (id) => { await setDefaultAddress(id); initData() }
 
 const maskName = (n) => n ? n[0] + '*'.repeat(n.length - 1) : ''
 const getCreditColor = (s) => s >= 90 ? 'text-success' : (s >= 70 ? 'text-primary' : 'text-danger')
 const getCreditLevel = (s) => s >= 90 ? '极好' : (s >= 70 ? '良好' : '一般')
-const openAddressDialog = () => { Object.assign(addressForm, { receiver: '', mobile: '', regionCode:[], detail: '', is_default: false }); addressDialogVisible.value = true }
-const initData = async () => {
+const openAddressDialog = () => { 
+  isEdit.value = false
+  editId.value = null
+  Object.assign(addressForm, { receiver: '', mobile: '', regionCode:[], detail: '', is_default: false })
+  addressDialogVisible.value = true 
+}
+
+const handleEditAddress = (row) => {
+  isEdit.value = true
+  editId.value = row.id
+  
+  addressForm.receiver = row.receiver
+  addressForm.mobile = row.mobile
+  addressForm.detail = row.detail
+  addressForm.is_default = row.is_default
+  
+  
+  addressForm.regionCode = [] 
+  
+  addressDialogVisible.value = true
+}
+
+const loadProfile = async () => {
   try {
-    // 1. 获取用户信息
-    user.value = await getProfile()
+    const res = await getProfile()
+    user.value = res
+    creditLogs.value = res.credit_logs || []
     
-    // 2. 获取该用户的商品列表
-    loadingProducts.value = true
-    const res = await getMyProducts()
-    // 注意处理分页返回的数据结构
-    myProducts.value = res.results || res
+    console.log('信用日志数据:', creditLogs.value) 
   } catch (err) {
-    console.error('数据加载失败', err)
-  } finally {
-    loadingProducts.value = false
+    console.error(err)
   }
 }
 
 onMounted(initData)
-
 </script>
 
 <style scoped lang="scss">

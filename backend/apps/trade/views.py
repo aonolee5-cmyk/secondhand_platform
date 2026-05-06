@@ -10,46 +10,47 @@ from .models import CartItem, Order, Review, Favorite
 from .serializers import CartSerializer, OrderSerializer, ReviewSerializer, FavoriteSerializer
 from goods.models import Product
 from datetime import datetime
+from users.services import CreditService
+from rest_framework.exceptions import ValidationError 
+
 
 class OrderViewSet(viewsets.ModelViewSet):
     """
-    订单视图
+    企业级订单视图集
     """
     queryset = Order.objects.all()
     serializer_class = OrderSerializer
     permission_classes = [IsAuthenticated] 
 
     def get_queryset(self):
-        # 用户只能看到自己的订单
         user = self.request.user
         return Order.objects.filter(Q(buyer=user) | Q(seller=user)).order_by('-create_time')
     
     @transaction.atomic 
     def create(self, request, *args, **kwargs):
-        """下单逻辑"""
+        """统一的下单逻辑"""
         user = request.user
-        product_id = request.data.get('product_id')
+        # 🚀 修正：对齐前端 Payload 的字段名 'product_id'
+        product_id = request.data.get('product_id') 
         address_info = request.data.get('address') 
 
         if not product_id or not address_info:
-            return Response({'detail': '商品id和地址信息不能为空'}, status=400)
+            return Response({'detail': '商品ID和地址信息不能为空'}, status=400)
 
-        # 锁定商品，防止并发冲突
         try:
+            # 锁定商品，防止并发
             product = Product.objects.select_for_update().get(id=product_id)
-        except Product.DoesNotExist:
+        except (Product.DoesNotExist, ValueError):
             return Response({'detail': '商品不存在'}, status=400)
 
-        # 检查状态
         if product.status != 'onsale':
             return Response({'detail': '商品已被他人抢走或已下架'}, status=400)
         if product.owner == user:
-            return Response({'detail': '不能购买自己的商品'}, status=400)
+            return Response({'detail': '不能购买自己的宝贝'}, status=400)
 
-        # 生成订单号
-        order_sn = f"{time.strftime('%Y%m%d%H%M%S')}{user.id}{random.randint(10,99)}"
+        # 生成唯一订单号
+        order_sn = f"{datetime.now().strftime('%Y%m%d%H%M%S')}{user.id}{random.randint(10,99)}"
 
-        # 创建订单记录
         order = Order.objects.create(
             order_sn=order_sn,
             buyer=user,
@@ -59,11 +60,11 @@ class OrderViewSet(viewsets.ModelViewSet):
             receiver_info=address_info
         )
 
-        # 修改商品状态为锁定
+        # 修改状态为锁定
         product.status = 'locked'
         product.save()
 
-        # 如果是从购物车下单，删除购物车项
+        # 联动：清理购物车
         CartItem.objects.filter(user=user, product=product).delete()
 
         serializer = self.get_serializer(order)
@@ -71,113 +72,127 @@ class OrderViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=['post'])
     def pay(self, request, pk=None):
-        """支付管理：模拟支付"""
+        """模拟支付"""
         order = self.get_object()
         if order.status != 'unpaid':
-            return Response({'detail': '订单已完成，请勿重复支付！'}, status=400)
+            return Response({'detail': '订单已处理，请勿重复支付'}, status=400)
         
-        # 模拟支付扣款逻辑
         order.status = 'paid'
         order.pay_time = datetime.now()
-        order.memo = f"ALIPAY_TRADE_{int(time.time())}"
+        order.memo = f"ALIPAY_MOCK_{int(time.time())}"
         order.save()
-        return Response({'status': '支付成功',
-                         'order_sn': order.order_sn,
-                         'pay_no': order.memo                         
-                         })
-    
-    # 退款
+        return Response({'status': '支付成功', 'order_sn': order.order_sn})
+
     @action(detail=True, methods=['post'])
-    def apply_refund(self, request, pk=None):
-        """买家申请退款/退货"""
+    def receive(self, request, pk=None):
+        """确认收货"""
         order = self.get_object()
-        reason = request.data.get('reason')
-        
         if order.buyer != request.user:
             return Response({'detail': '无权操作'}, status=403)
-        if order.status not in['paid', 'shipped']:
-            return Response({'detail': '当前状态无法申请退款'}, status=400)
+        if order.status not in ['paid', 'shipped']:
+            return Response({'detail': '当前状态无法收货'}, status=400)
             
-        # 状态变更为纠纷
+        order.status = 'received'
+        order.save()
+        # 信用分奖励
+        CreditService.update_score(order.buyer, 3, '完成一笔交易', 'trade_done')
+        return Response({'status': '已确认收货'})
+
+    @action(detail=True, methods=['post'])
+    def ship(self, request, pk=None):
+        """卖家发货"""
+        order = self.get_object()
+        if order.seller != request.user:
+            return Response({'detail': '无权操作'}, status=403)
+        if order.status != 'paid':
+            return Response({'detail': '订单未支付'}, status=400)
+        order.status = 'shipped'
+        order.save()
+        return Response({'status': '发货成功'})
+
+    @action(detail=True, methods=['post'])
+    def apply_refund(self, request, pk=None):
+        """申请退款"""
+        order = self.get_object()
+        reason = request.data.get('reason')
         order.status = 'dispute'
         order.refund_reason = reason
         order.save()
-        return Response({'status': '已申请退款，等待卖家处理'})
+        return Response({'status': '退款申请已提交'})
 
     @action(detail=True, methods=['post'])
     def handle_refund(self, request, pk=None):
-        """卖家处理退款申请"""
+        """处理退款"""
         order = self.get_object()
         action_type = request.data.get('action')
-        
-        if order.seller != request.user:
-            return Response({'detail': '无权操作'}, status=403)
-        if order.status != 'dispute':
-            return Response({'detail': '该订单不在退款申请状态'}, status=400)
-            
         if action_type == 'agree':
-            # 卖家同意：订单关闭，商品回滚为在售状态
             order.status = 'closed'
             order.save()
-            
-            product = order.product
-            product.status = 'onsale'
-            product.save()
-            return Response({'status': '已同意退款，金额将原路返回'})
-            
-        elif action_type == 'reject':
-            return Response({'status': '卖家已拒绝,可申请客服介入'})
+            order.product.status = 'onsale'
+            order.product.save()
+            return Response({'status': '已同意退款'})
+        return Response({'status': '卖家已拒绝'})
 
-    
     @action(detail=True, methods=['post'])
     def apply_arbitration(self, request, pk=None):
-        """客服介入"""
-        order=self.get_object()
-        if order.status != 'dispute':
-            return Response({'detail': '订单未处于纠纷'}, status=400)
+        """仲裁"""
+        order = self.get_object()
         order.status = 'arbitrating'
         order.save()
-        return Response({'status': '已申请客服介入，请等待平台进行处理'})
-    
-    @action(detail=True, methods=['post'])
-    def receive(self, request, pk=None):
-        """买家确认收货"""
-        order = self.get_object()
-        
-        # 安全检查：只有买家能点收货
-        if order.buyer != request.user:
-            return Response({'detail': '无权操作'}, status=403)
-        
-        # 逻辑检查：只有已发货（shipped）或已支付（paid，防止卖家忘了点发货）的订单能收货
-        if order.status not in ['paid', 'shipped']:
-            return Response({'detail': '当前订单状态无需确认收货'}, status=400)
-            
-        # 变更状态为交易完成
-        order.status = 'received'
-        order.save()
-        
-        return Response({'status': '已确认收货，交易完成'})
-    
-    @action(detail=True, methods=['post'])
-    def ship(self, request, pk=None):
-        """卖家执行发货"""
-        order = self.get_object()
-        
-        # 🛡️ 安全检查：只有卖家本人能点发货
-        if order.seller != request.user:
-            return Response({'detail': '非法操作：您不是该订单的卖家'}, status=403)
-        
-        # 🛡️ 状态检查：只有“已支付”的订单才能发货
-        if order.status != 'paid':
-            return Response({'detail': '订单状态异常，无法发货'}, status=400)
-            
-        # 变更状态为已发货
-        order.status = 'shipped'
-        order.save()
-        
-        return Response({'status': '发货成功，已通知买家'})
-    
+        return Response({'status': '已提请仲裁'})
+
+
 class ReviewViewSet(viewsets.ModelViewSet):
+    """
+    评价视图：逻辑已精简，统一使用 CreditService
+    """
+    queryset = Review.objects.all()
+    serializer_class = ReviewSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    @transaction.atomic
+    def perform_create(self, serializer):
+        order = serializer.validated_data.get('order')
+        
+        if order.buyer != self.request.user:
+            raise ValidationError("你只能评价自己的订单")
+
+        if order.status not in ['shipped', 'received', 'paid']:
+            raise ValidationError("订单当前状态暂不能评价")
+
+        # 1. 保存评价
+        from django.db import IntegrityError
+        try:
+            review = serializer.save()
+        except IntegrityError:
+            raise ValidationError("该订单已评价")
+
+        # 2. 🚀 买家评价加分
+        CreditService.update_score(self.request.user, 4, '完成交易评价', 'review_done')
+        
+        # 3. 🚀 根据评分，给卖家加分或扣分 (逻辑完全交给 Service)
+        seller = order.seller
+        s = review.buyer_score
+        if s == 5:
+            CreditService.update_score(seller, 2, f"来自买家 {order.buyer.username} 的五星好评", "trade_done")
+        elif s <= 2:
+            CreditService.update_score(seller, -6, f"来自买家 {order.buyer.username} 的差评", "penalty")
+        
+        # 4. 自动结单
+        if order.status != 'received':
+            order.status = 'received'
+            order.save()
+
+    @action(detail=True, methods=['post'])
+    def append_review(self, request, pk=None):
+        review = self.get_object()
+        content = request.data.get('content')
+        if not content:
+            return Response({'detail': '内容不能为空'}, status=400)
+        review.additional_comment = content
+        review.additional_time = datetime.now()
+        review.save()
+        return Response({'status': '追加成功'})
     """
     评论视图
     """
@@ -185,30 +200,40 @@ class ReviewViewSet(viewsets.ModelViewSet):
     serializer_class = ReviewSerializer
     permission_classes = [permissions.IsAuthenticated]
 
-    @transaction.atomic  # 🚀 亮点1：开启事务，确保评价存入和扣分操作要么同时成功，要么同时失败
+    @transaction.atomic  # 确保评价存入和扣分操作要么同时成功，要么同时失败
     def perform_create(self, serializer):
-        # 1. 提取订单数据
+        # 提取订单数据
         order = serializer.validated_data.get('order')
         
-        # 🛡️ 亮点2：安全性校验（越权检查）
-        # 必须确保：当前登录的用户 是 订单的买家，否则任何人都能随便给别人评价
+        # 安全性校验
         if order.buyer != self.request.user:
             raise ValidationError("非法操作：你只能评价自己购买的订单")
 
-        # 🛡️ 亮点3：业务状态校验
-        # 只有“已发货”或“已收货”的订单才能评价（防止恶意对未支付订单刷分）
+        # 业务状态校验
         if order.status not in ['shipped', 'received', 'paid']:
             raise ValidationError("订单尚未完成，暂不能评价")
 
-        # 2. 保存评价
-        # 增加异常捕获，防止因为 OneToOneField 重复评价导致系统崩溃
+        # 保存评价
         try:
             review = serializer.save()
         except IntegrityError:
             raise ValidationError("该订单已经评价过了，请勿重复提交")
 
-        # 3. 核心逻辑：更新卖家信用分
+        CreditService.update_score(self.request.user, 4, '完成交易评价', 'review_done')
+        
+        # 更新卖家信用分
         seller = order.seller
+        if seller:
+            s = review.buyer_score
+            if s == 5:
+                CreditService.update_score(seller, 2, f"来自买家 {order.buyer.username} 的五星好评", "trade_done")
+            elif s == 1:
+                CreditService.update_score(seller, -10, f"来自买家 {order.buyer.username} 的一星差评", "penalty")
+        
+        if order.status != 'received':
+            order.status = 'received'
+            order.save()
+            
         score_change = 0
         s = review.buyer_score
         
@@ -220,11 +245,9 @@ class ReviewViewSet(viewsets.ModelViewSet):
         if score_change != 0:
             seller.credit_score = F('credit_score') + score_change
             seller.save()
-            # 💡 提示：使用 F 对象后，seller.credit_score 在当前内存里还是旧值
-            # 如果后面还需要用到最新分值，必须执行下一行：
-            # seller.refresh_from_db() 
+
         
-        # 4. 更新订单状态为“已收货/已完成”
+        #  更新订单状态为“已收货/已完成”
         if order.status != 'received':
             order.status = 'received'
             order.save()
@@ -275,7 +298,7 @@ class FavoriteViewSet(viewsets.ModelViewSet):
     permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):
-        # 只看自己的收藏，并按时间倒序
+        # 只看自己的收藏
         return Favorite.objects.filter(user=self.request.user).order_by('-add_time')
     
     def perform_create(self, serializer):
@@ -293,15 +316,13 @@ class FavoriteViewSet(viewsets.ModelViewSet):
         fav = Favorite.objects.filter(user=request.user, product_id=product_id).first()
         
         if fav:
-            # 如果已存在，则删除（取消收藏）
             fav.delete()
             return Response({'is_favorite': False, 'detail': '已取消收藏'})
         else:
-            # 如果不存在，则创建（加入收藏）
             Favorite.objects.create(user=request.user, product_id=product_id)
             return Response({'is_favorite': True, 'detail': '已加入收藏夹'})
 
-    # 🚀 亮点功能：进入商品页时查询状态
+
     @action(detail=False, methods=['get'])
     def check_status(self, request):
         product_id = request.query_params.get('product_id')

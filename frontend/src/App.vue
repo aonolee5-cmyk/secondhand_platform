@@ -1,17 +1,15 @@
 <template>
   <div class="app-wrapper">
-    <!-- 1. 企业级顶部导航栏：采用 1:2:1 比例分布 -->
     <el-header class="main-header">
       <div class="header-content">
-        <!-- 左侧：Logo区 -->
         <div class="logo-section" @click="$router.push('/')">
           <div class="logo-icon">
             <el-icon><Shop /></el-icon>
           </div>
-          <span class="logo-text"><span class="highlight">二手交易平台</span></span>
+          <span class="logo-text"><span class="highlight">二手物品交易平台</span></span>
         </div>
 
-        <!-- 中间：搜索区 (自适应宽度，带最大值限制) -->
+        <!--搜索区-->
         <div class="search-section" v-if="isSearchPage">
           <el-input 
             v-model="searchQuery" 
@@ -25,7 +23,7 @@
           </el-input>
         </div>
 
-        <!-- 右侧：动作区 (靠右对齐) -->
+
         <div class="action-section">
           <el-button type="primary" :icon="Plus" class="post-btn" @click="goToPost" round>发布宝贝</el-button>
           
@@ -43,11 +41,11 @@
             </el-badge>
 
             <!-- 购物车 -->
-            <el-tooltip content="购物车" placement="bottom">
+            <!-- <el-tooltip content="购物车" placement="bottom">
               <el-button circle :icon="ShoppingCart" @click="$router.push('/cart')" class="cart-btn" />
-            </el-tooltip>
+            </el-tooltip> -->
 
-            <!-- 闲鱼级下拉卡片 -->
+            <!-- 下拉卡片 -->
             <el-dropdown trigger="hover" placement="bottom-end">
               <div class="user-trigger" @click="handleCommand('/user/profile')">
                 <el-avatar :size="32" src="https://cube.elemecdn.com/0/88/03b0d39583f48206768a7534e55bcpng.png" />
@@ -120,7 +118,7 @@
       </div>
     </el-header>
 
-    <!-- 2. 主体展示区：增加背景色区分 -->
+
     <el-main class="main-container">
       <router-view v-slot="{ Component }">
         <transition name="page-fade" mode="out-in">
@@ -129,7 +127,7 @@
       </router-view>
     </el-main>
 
-    <!-- 3. 企业级简约页脚 -->
+
     <el-footer class="footer">
       <div class="footer-content">
         <p>©二手物品交易平台</p>
@@ -266,13 +264,11 @@ watch(() => route.path, (newPath) => {
 </script>
 
 <style lang="scss">
-/* --- 全局重置：消除廉价感的基石 --- */
 body {
   margin: 0;
   padding: 0;
-  background-color: #f6f8fa; /* 稍微深一点的灰白，显得高级 */
+  background-color: #f6f8fa;
   font-family: -apple-system, system-ui, BlinkMacSystemFont, "Segoe UI", Roboto;
-  /* 🚀 核心修复：防止缩放时 body 宽度塌陷导致横向截断 */
   min-width: 1250px; 
 }
 
@@ -282,7 +278,6 @@ body {
   flex-direction: column;
 }
 
-/* --- 导航栏：企业级 Flex 居中架构 --- */
 .main-header {
   background: #fff;
   box-shadow: 0 2px 10px rgba(0,0,0,0.05);
@@ -291,29 +286,27 @@ body {
   top: 0;
   z-index: 1000;
   width: 100%;
-  /* 🚀 核心修复：开启居中容器模式 */
   display: flex;
   justify-content: center;
 }
 
-/* 🚀 核心修复：这是你之前缺少的布局容器，负责把三块内容排成一排 */
 .header-content {
-  width: 1300px; /* 与你的 main-container 保持一致，产生纵向对齐美感 */
+  width: 1300px; 
   height: 100%;
   display: flex;
   align-items: center;
   justify-content: space-between;
   padding: 0 20px;
   box-sizing: border-box;
-  flex-shrink: 0; /* 严禁容器本身缩小 */
+  flex-shrink: 0; 
 }
 
 .logo-section {
   display: flex;
   align-items: center;
   cursor: pointer;
-  width: 250px; /* 固定左侧宽度 */
-  flex-shrink: 0; /* 🚀 严禁 Logo 变形 */
+  width: 250px; 
+  flex-shrink: 0;
   .logo-icon {
     width: 38px;
     height: 38px;
@@ -331,13 +324,13 @@ body {
     font-size: 22px;
     font-weight: 800;
     color: #2c3e50;
-    white-space: nowrap; /* 🚀 强制不换行 */
+    white-space: nowrap; 
     .highlight { color: #409EFF; }
   }
 }
 
 .search-section {
-  flex: 1; /* 🚀 只有搜索框可以动态伸缩 */
+  flex: 1; 
   max-width: 500px;
   min-width: 200px;
   margin: 0 40px;
@@ -355,15 +348,15 @@ body {
   display: flex;
   align-items: center;
   justify-content: flex-end;
-  width: 380px; /* 固定右侧宽度 */
-  flex-shrink: 0; /* 🚀 严禁操作区按钮挤压 */
+  width: 380px;
+  flex-shrink: 0; 
   gap: 15px;
 
   .post-btn { font-weight: bold; }
   
   .user-trigger {
     display: flex;
-    white-space: nowrap; /* 🚀 确保欢迎语不换行 */
+    white-space: nowrap;
     align-items: center;
     gap: 8px;
     cursor: pointer;
@@ -376,7 +369,7 @@ body {
   }
 }
 
-/* --- 内容容器 --- */
+
 .main-container {
   max-width: 1300px;
   margin: 0 auto;
@@ -385,20 +378,20 @@ body {
   box-sizing: border-box;
 }
 
-/* --- 页面切换动效 --- */
+
 .page-fade-enter-active, .page-fade-leave-active {
   transition: all 0.3s ease;
 }
 .page-fade-enter-from { opacity: 0; transform: translateY(15px); }
 .page-fade-leave-to { opacity: 0; transform: translateY(-15px); }
 
-/* --- 闲鱼风格下拉卡片 CSS --- */
+
 .xianyu-profile-card {
   width: 280px;
   padding: 20px;
   background: #fff;
   border-radius: 16px;
-  box-shadow: 0 10px 30px rgba(0,0,0,0.1); /* 补全阴影增强悬浮感 */
+  box-shadow: 0 10px 30px rgba(0,0,0,0.1);
   .card-header {
     display: flex; align-items: center; gap: 12px; margin-bottom: 20px;
     .nickname { font-size: 18px; font-weight: 700; color: #333; }
@@ -420,7 +413,7 @@ body {
   }
 }
 
-/* --- 页脚：去廉价感 --- */
+
 .footer {
   background: #fff;
   border-top: 1px solid #ebedf0;

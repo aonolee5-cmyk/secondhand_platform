@@ -16,7 +16,8 @@ from rest_framework_simplejwt.views import TokenObtainPairView
 from .serializers import MyTokenObtainPairSerializer
 from .serializers import CustomTokenObtainPairSerializer
 from django.contrib.auth.hashers import check_password
-
+from .services import CreditService
+from django.utils import timezone
 
 User = get_user_model()
 
@@ -39,10 +40,37 @@ class UserProfileView(generics.RetrieveUpdateAPIView):
         ''' 返回当前登录的用户对象 '''
         return self.request.user
 
+    def perform_update(self, serializer):
+        """
+        修改用户信息时，如果之前没有完善资料，则加 10 分
+        """
+        user = self.get_object()
+        # 记录更新前的状态：是否已经完善过资料
+        # 只要之前 昵称 和 头像 有一个为空，就视为尚未完善
+        had_profile = bool(user.nickname and user.avatar)
+
+        # 执行真正的数据库保存
+        instance = serializer.save()
+
+        # 逻辑判断：如果之前没完善，现在完善了（都有值了），则加 10 分
+        if not had_profile and instance.nickname and instance.avatar:
+            success, msg = CreditService.update_score(
+                instance, 
+                10, 
+                "首次完善个人资料（昵称与头像）", 
+                "profile"
+            )
+            if success:
+                print(f"DEBUG: 用户 {instance.username} 完善资料加分成功")
+    
     def put(self, request,*args, **kwargs):
         ''' 修改用户信息 '''
         return self.update(request, *args, **kwargs)
 
+    def patch(self, request, *args, **kwargs):
+        ''' 局部修改用户信息 (头像上传通常走这里) '''
+        return self.partial_update(request, *args, **kwargs)
+    
 # 收货地址视图集
 class AddressViewSet(viewsets.ModelViewSet):
     serializer_class = AddressSerializer
@@ -52,9 +80,8 @@ class AddressViewSet(viewsets.ModelViewSet):
         return Address.objects.filter(user=self.request.user).order_by('-is_default', '-id')
 
     def perform_create(self, serializer):
-        ''' 创建地址时关联当前用户 '''
+        '''创建地址'''
         if serializer.validated_data.get('is_default'):
-            # 如果新创建的地址设为默认地址，则将其他地址设为非默认
             Address.objects.filter(user=self.request.user).update(is_default=False)
         serializer.save(user=self.request.user)
     
@@ -91,10 +118,11 @@ class RealNameVerifyView(APIView):
         if not real_name or not id_card:
             return Response({'detail': '请完整填写姓名和身份证号'}, status=400)
             
-        # 更新用户信息
+        # 更新信息
         user.real_name = real_name
         user.id_card = id_card
-        user.verify_status = 1  # 设为审核中
+        user.verify_status = 1  
+        user.verify_time = timezone.now()
         user.save()
         
         return Response({'detail': '实名信息已提交，请等待管理员审核'})
@@ -126,15 +154,15 @@ class ChangePasswordView(APIView):
         old_password = request.data.get('old_password')
         new_password = request.data.get('new_password')
         
-        # 1. 校验旧密码
+        # 校验旧密码
         if not user.check_password(old_password):
             return Response({'detail': '旧密码输入错误'}, status=status.HTTP_400_BAD_REQUEST)
         
-        # 2. 校验新旧密码是否一致
+        # 校验新旧密码是否一致
         if old_password == new_password:
             return Response({'detail': '新密码不能与旧密码相同'}, status=status.HTTP_400_BAD_REQUEST)
             
-        # 3. 设置新密码并保存
+        # 设置新密码并保存
         user.set_password(new_password)
         user.save()
         
@@ -148,15 +176,15 @@ class ChangeMobileView(APIView):
         user = request.user
         new_mobile = request.data.get('new_mobile')
         
-        # 1. 基础校验：非空
+        # 基础校验：非空
         if not new_mobile:
             return Response({'detail': '新手机号不能为空'}, status=status.HTTP_400_BAD_REQUEST)
         
-        # 2. 唯一性校验：确保新号码没被别人注册过
+        #  唯一性校验：确保新号码没被别人注册过
         if User.objects.filter(mobile=new_mobile).exclude(id=user.id).exists():
             return Response({'detail': '该手机号已被其他账号绑定'}, status=status.HTTP_400_BAD_REQUEST)
             
-        # 3. 保存
+        # 保存
         user.mobile = new_mobile
         user.save()
         

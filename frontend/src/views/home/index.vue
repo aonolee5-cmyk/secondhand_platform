@@ -1,6 +1,31 @@
 <template>
   <div class="home-container">
-    <!-- 1. 顶部筛选面板 (类名已修正为 filter-card) -->
+    
+    <div class="quick-service-bar" v-if="isLogin">
+      <div class="welcome-text">
+        <el-icon><User /></el-icon>
+        <span>你好，欢迎回来！</span>
+      </div>
+      <div class="service-btns">
+        <!-- 我的订单 -->
+        <el-button type="primary" :icon="List" @click="$router.push('/user/orders')" plain round>
+          我的订单
+        </el-button>
+        <!-- 浏览记录 -->
+        <el-button type="success" :icon="View" @click="$router.push('/user/history')" plain round>
+          浏览记录
+        </el-button>
+        <!-- 我的收藏 -->
+        <el-button type="warning" :icon="Star" @click="$router.push('/user/favorites')" plain round>
+          我的收藏
+        </el-button>
+
+        <el-button type="danger" :icon="ShoppingCart" @click="$router.push('/cart')" plain round>
+          我的购物车
+        </el-button>
+      </div>
+    </div>
+
     <el-card class="filter-card" shadow="never">
       <!-- 分类筛选 -->
       <div class="filter-group">
@@ -56,7 +81,7 @@
       </div>
     </el-card>
 
-    <!-- 2. 商品瀑布流列表 (类名已修正为 product-item) -->
+    <!-- 商品列表 (保持原样) -->
     <el-row :gutter="20" v-loading="loading" class="product-grid">
       <el-col :xs="12" :sm="8" :md="6" :lg="6" v-for="item in productList" :key="item.id">
         <el-card class="product-item" :body-style="{ padding: '0px' }" @click="$router.push(`/product/${item.id}`)">
@@ -85,21 +110,25 @@
       </el-col>
     </el-row>
 
-    <!-- 3. 空状态提示 -->
+    <!--  空状态提示 -->
     <el-empty v-if="!loading && productList.length === 0" description="没有找到相关的宝贝哦" />
   </div>
 </template>
 
 <script setup>
-import { ref, reactive, onMounted, watch } from 'vue'
-import { useRoute } from 'vue-router'
+import { ref, reactive, onMounted, watch, computed } from 'vue' 
+import { useRoute, useRouter } from 'vue-router'
 import { getCategories, searchProducts } from '@/api/goods'
-import { UserFilled,Search, Plus, Shop, ArrowDown, ShoppingCart, Menu } from '@element-plus/icons-vue'
+import { UserFilled, Search, Plus, Shop, ArrowDown, ShoppingCart, Menu, List, View, User, Star } from '@element-plus/icons-vue'
 
 const route = useRoute()
+const router = useRouter()
 const loading = ref(false)
 const categories = ref([])
 const productList = ref([])
+
+// 判断是否登录
+const isLogin = computed(() => !!localStorage.getItem('token'))
 
 const filterForm = reactive({
   category: null,
@@ -157,12 +186,37 @@ onMounted(() => {
 </script>
 
 <style scoped lang="scss">
+.quick-service-bar {
+  background: #fff;
+  padding: 15px 25px;
+  border-radius: 12px;
+  margin-bottom: 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.02);
+
+  .welcome-text {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 15px;
+    color: #606266;
+  }
+  .service-btns {
+    display: flex;
+    gap: 12px;
+  }
+}
+
 .home-container {
   padding: 20px 0;
   background-color: #f5f7fa; 
+  max-width: 1240px;
+  margin: 0 auto;
 }
 
-/* 🚀 1. 筛选面板样式 */
+
 .filter-card {
   margin-bottom: 25px;
   border-radius: 12px;
@@ -184,7 +238,7 @@ onMounted(() => {
   }
 }
 
-/* 🚀 2. 商品卡片样式 */
+
 .product-item {
   margin-bottom: 20px;
   cursor: pointer;

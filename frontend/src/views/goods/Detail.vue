@@ -108,7 +108,6 @@
         <el-button type="danger" @click="handleReportSubmit" :loading="reportLoading">提交举报</el-button>
       </template>
     </el-dialog>
-    <!-- 🚀 新增：地址选择弹窗 (企业级真实逻辑) -->
     <el-dialog v-model="addressVisible" title="确认收货信息" width="500px" destroy-on-close>
       <div class="address-selector-container">
         <el-alert 
@@ -166,7 +165,7 @@ import {
   Star, 
   StarFilled,
   Warning,
-  Wallet // 🚀 建议引入钱包图标
+  Wallet
 } from '@element-plus/icons-vue'
 import {createOrder, checkFavoriteStatus, toggleFavorite, addToCart} from "@/api/trade"
 import request from '@/utils/request'
@@ -182,7 +181,7 @@ const addressVisible = ref(false)
 const addressList = ref([])           
 const selectedAddressId = ref(null)   
 
-// 🚀 【新增核心函数】兼容处理本地图片和网络图片
+
 const resolveImageUrl = (path) => {
   if (!path) return '';
   // 如果是 http 开头的绝对路径（脚本生成的），直接返回
@@ -263,7 +262,7 @@ const handleReportSubmit = async () => {
   }
 }
 
-// 立即购买 (唤起地址选择)
+// 立即购买
 const handleBuy = async () => {
   if (!localStorage.getItem('token')) {
     ElMessage.warning('请先登录再进行购买')
@@ -306,27 +305,56 @@ const handleAddToCart = async () => {
 }
 
 // 最终确认下单
+// 修改 src/views/goods/Detail.vue 中的 confirmOrder 函数
+
 const confirmOrder = async () => {
-  const chosenAddress = addressList.value.find(a => a.id === selectedAddressId.value)
-  if (!chosenAddress) return 
+  // 1. 🚀 使用 == 替代 ===，防止 String 和 Number 类型冲突
+  const chosenAddress = addressList.value.find(a => a.id == selectedAddressId.value)
+  
+  // 2. 严格拦截：如果没选地址或商品信息没加载完
+  if (!chosenAddress) {
+    ElMessage.error('请选择一个有效的收货地址')
+    return
+  }
+  
+  if (!product.value.id) {
+    ElMessage.error('商品信息加载异常，请刷新页面')
+    return
+  }
+
   orderLoading.value = true
-  try {
-    const orderData = {
-      product_id: product.value.id,
-      address: {
-        receiver: chosenAddress.receiver,
-        mobile: chosenAddress.mobile,
-        region: chosenAddress.region,
-        detail: chosenAddress.detail
-      }
+  
+  // 3. 构造数据包
+  const orderData = {
+    product_id: product.value.id,
+    address: {
+      receiver: chosenAddress.receiver,
+      mobile: chosenAddress.mobile,
+      region: chosenAddress.region,
+      detail: chosenAddress.detail
     }
+  }
+
+  // 🔍 DEBUG：这是解决 400 错误的关键。
+  // 请在浏览器控制台查看这个打印，确保 product_id 和 address 都有值
+  console.log('🚀 准备发送下单数据:', orderData)
+
+  try {
     const res = await createOrder(orderData)
-    ElMessage.success('订单已提交，正在前往收银台...')
-    addressVisible.value = false
-    // 🚀 跳转到支付页面
-    router.push(`/payment/${res.id}`)
+    
+    // 根据你之前的控制台截图，id 直接在 res 根目录
+    const orderId = res.id 
+    
+    if (orderId) {
+      ElMessage.success('订单已提交，正在前往收银台...')
+      addressVisible.value = false
+      router.push(`/payment/${orderId}`)
+    } else {
+      throw new Error('后端未返回订单ID')
+    }
   } catch (err) {
-    console.error('下单出错:', err)
+    // 这里拦截器会自动弹出后端的 detail 报错
+    console.error('下单过程崩溃:', err)
   } finally {
     orderLoading.value = false
   }
@@ -337,6 +365,13 @@ onMounted(async () => {
   const res = await getProductDetail(id)
   product.value = res
   isFavorite.value = res.is_favorited
+  if(localStorage.getItem('token')){
+    request({
+      url:'/goods/history/record/',
+      method:'post',
+      data:{ product_id:id }
+    })
+  }
 })
 </script>
 

@@ -17,7 +17,9 @@
         <el-table-column prop="real_name" label="真实姓名" width="120" />
         <el-table-column prop="id_card" label="身份证号" />
         <el-table-column label="提交时间" width="180">
-          <template #default="scope">{{ formatDate(scope.row.date_joined) }}</template>
+          <template #default="scope">
+            <span>{{ formatDateTime(scope.row.verify_time) }}</span>
+          </template>
         </el-table-column>
         <el-table-column label="操作" width="180">
           <template #default="scope">
@@ -42,12 +44,11 @@ import { ElMessage } from 'element-plus'
 
 const loading = ref(false)
 const verifyList = ref([])
-const statusFilter = ref('1') // 默认看待审核
+const statusFilter = ref('1') 
 
 const fetchData = async () => {
   loading.value = true
   try {
-    // 🚀 这里调用之前写的管理接口，带上过滤参数
     const res = await request({ 
       url: '/users/admin/users/', 
       method: 'get',
@@ -59,9 +60,14 @@ const fetchData = async () => {
   }
 }
 
+const formatDateTime = (timeStr) => {
+  if (!timeStr) return '未记录'
+  const date = new Date(timeStr)
+  return date.toLocaleString().replace(/\//g, '-')
+}
+
 const handleVerify = async (row, targetStatus) => {
   try {
-    // 🚀 调用后端更新接口（复用之前 UserViewSet 的逻辑或新建专用逻辑）
     await request({ 
       url: `/users/admin/users/${row.id}/`, 
       method: 'patch', 

@@ -55,7 +55,7 @@
       top="5vh"
     >
       <div v-if="currentRow" class="audit-panel">
-        <!-- 1. 卖家与基本信息 -->
+        <!-- 卖家与基本信息 -->
         <el-descriptions title="基础信息" :column="2" border size="small">
           <el-descriptions-item label="商品标题" :span="2">{{ currentRow.title }}</el-descriptions-item>
           <el-descriptions-item label="卖家账号">{{ currentRow.owner_name }}</el-descriptions-item>
@@ -67,8 +67,6 @@
           <el-descriptions-item label="所属分类">{{ currentRow.category_name }}</el-descriptions-item>
           <el-descriptions-item label="售价">￥{{ currentRow.price }}</el-descriptions-item>
         </el-descriptions>
-
-        <!-- 2. 动态参数审计 (JSONB 字段展示) -->
         <div class="audit-section-title">规格参数</div>
         <el-descriptions :column="2" border size="small">
           <el-descriptions-item 
@@ -83,13 +81,12 @@
           </el-descriptions-item>
         </el-descriptions>
 
-        <!-- 3. 详细描述 -->
+        <!--详细描述-->
         <div class="audit-section-title">详细描述</div>
         <div class="desc-content-box">
           {{ currentRow.desc }}
         </div>
 
-        <!-- 4. 图片资源审计 -->
         <div class="audit-section-title">图片资源 (共 {{ currentRow.images?.length }} 张)</div>
         <div class="image-gallery">
           <el-image 
@@ -123,7 +120,6 @@ const activeTab = ref('audit')
 const products = ref([])
 const loading = ref(false)
 
-// 🚀 弹窗逻辑状态
 const detailVisible = ref(false)
 const currentRow = ref(null)
 
@@ -151,13 +147,13 @@ const doAudit = async (id, isPass) => {
   loadProducts()
 }
 
-// 🚀 在弹窗中执行审核
+
 const handleAuditInDialog = async (isPass) => {
   await doAudit(currentRow.value.id, isPass)
   detailVisible.value = false
 }
 
-// 🚀 打开详情弹窗
+
 const openDetail = (row) => {
   currentRow.value = row
   detailVisible.value = true

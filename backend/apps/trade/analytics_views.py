@@ -10,13 +10,12 @@ from goods.models import Product, Category
 
 class AdminDashboardStatsView(APIView):
     """
-    企业级管理后台大盘统计接口
-    支持自定义时间范围查询，并自动执行时序数据补零逻辑
+    管理后台大盘统计接口，支持自定义时间范围查询，并自动执行时序数据补零逻辑
     """
     permission_classes = [IsAdminUser] 
 
     def get(self, request):
-        # 1. 解析日期范围参数
+        # 解析日期范围参数
         start_str = request.query_params.get('start_date', '').strip()
         end_str = request.query_params.get('end_date', '').strip()
 
@@ -31,14 +30,14 @@ class AdminDashboardStatsView(APIView):
         except (ValueError, TypeError):
             return Response({'detail': '日期格式不合法，请输入 YYYY-MM-DD 格式'}, status=400)
 
-        # 2. 获取指定范围内的已支付订单数据集
+        # 获取指定范围内的已支付订单数据集
         range_orders = Order.objects.filter(
             create_time__date__gte=start_date,
             create_time__date__lte=end_date,
             status='paid'
         )
 
-        # 3. 按日聚合交易金额
+        # 按日聚合交易金额
         db_data = (
             range_orders
             .annotate(day=TruncDay('create_time'))
@@ -47,10 +46,10 @@ class AdminDashboardStatsView(APIView):
             .order_by('day')
         )
 
-        # 4. 构建日期映射字典，用于快速查找
+        # 构建日期映射字典，用于快速查找
         data_map = {res['day'].strftime('%Y-%m-%d'): float(res['amount']) for res in db_data}
         
-        # 5. 执行时序填充算法：确保时间轴连续，无数据日期自动补 0
+        # 执行时序填充算法：确保时间轴连续，无数据日期自动补 0
         final_trend = []
         current_date = start_date
         while current_date <= end_date:
@@ -61,18 +60,18 @@ class AdminDashboardStatsView(APIView):
             })
             current_date += timedelta(days=1)
 
-        # 6. 统计全局及核心业务指标
+        # 统计全局及核心业务指标
         total_gmv = range_orders.aggregate(total=Sum('total_amount'))['total'] or 0
         total_orders = range_orders.count()
         pending_audit = Product.objects.filter(status='audit').count()
 
-        # 7. 品类分布统计
+        # 品类分布统计
         category_stats = list(
             Category.objects.annotate(prod_count=Count('product'))
             .values('name', 'prod_count')
         )
 
-        # 8. 统一响应格式
+        # 统一响应格式
         return Response({
             'metrics': {
                 'total_gmv': round(float(total_gmv), 2),

@@ -1,16 +1,13 @@
 <template>
   <div class="order-container">
-    <!-- 🚀 企业级优化：动态标题 -->
     <div class="page-header" style="margin-bottom: 20px;">
       <h2 style="margin: 0; color: #333;">{{ isSellerMode ? '我卖出的' : '我买到的' }}</h2>
     </div>
 
     <el-card shadow="never">
-      <!-- ================= 买家视角 (只有在非卖家模式下显示) ================= -->
       <el-table v-if="!isSellerMode" :data="buyOrders" empty-text="暂无买入订单" stripe>
         <el-table-column prop="order_sn" label="订单号" width="180" >
           <template #default="scope">
-            <!-- 🚀 这里加上和卖家端一样的 el-link 和点击事件 -->
             <el-link type="primary" underline="never" @click="showOrderDetail(scope.row)">
               {{ scope.row.order_sn }}
             </el-link>
@@ -29,7 +26,6 @@
           </template>
         </el-table-column>
         
-        <!-- 🚀 修复后的操作列：宽度改为 400 确保按钮不重叠 -->
         <el-table-column label="操作" width="400">
           <template #default="scope">
             <!-- 1. 待支付 -->
@@ -38,7 +34,6 @@
               size="small" type="warning" @click="handlePay(scope.row.id)"
             >去支付</el-button>
 
-            <!-- 2. 核心交易流 (已支付/已发货) -->
             <template v-if="['paid', 'shipped'].includes(scope.row.status)">
               <el-button-group>
                 <el-button size="small" type="success" @click="handleReceive(scope.row.id)">确认收货</el-button>
@@ -47,13 +42,13 @@
               </el-button-group>
             </template>
 
-            <!-- 3. 纠纷/仲裁中 -->
+
             <el-button 
               v-if="scope.row.status === 'dispute'" 
               size="small" type="primary" @click="applyArbitration(scope.row.id)"
             >申请客服介入</el-button>
 
-            <!-- 4. 已收货/已完成 (评价与追评逻辑整合) -->
+
             <template v-if="scope.row.status === 'received'">
               <el-button 
                 v-if="!scope.row.has_review" 
@@ -76,11 +71,10 @@
         </el-table-column>
       </el-table>
 
-      <!-- ================= 卖家视角 (只有在卖家模式下显示) ================= -->
+
       <el-table v-else :data="sellOrders" empty-text="暂无卖出订单" stripe>
         <el-table-column prop="order_sn" label="订单号" width="180" >
           <template #default="scope">
-            <!-- 🚀 点击订单号触发详情弹窗 -->
             <el-link type="primary" underline="never" @click="showOrderDetail(scope.row)">
               {{ scope.row.order_sn }}
             </el-link>
@@ -88,11 +82,17 @@
         </el-table-column>
         <el-table-column prop="product_title" label="商品" />
         <el-table-column prop="total_amount" label="金额" width="100" />
-        <el-table-column label="状态" width="120">
+        <el-table-column label="状态" width="160">
           <template #default="scope">
             <el-tag :type="statusMap[scope.row.status]?.type || 'info'">
               {{ statusMap[scope.row.status]?.label || scope.row.status }}
             </el-tag>
+            <div
+              v-if="scope.row.status === 'dispute'"
+              style="color: #F56C6C; font-size: 12px; margin-top: 5px; line-height: 1.2;"
+            >
+                退款理由:{{ scope.row.refund_reason || '未填写' }}
+            </div>
           </template>
         </el-table-column>
         <el-table-column label="操作" width="280">
@@ -165,7 +165,6 @@
       </template>
     </el-dialog>
   </div>
-    <!-- 🚀 订单详情对话框 -->
     <el-dialog v-model="detailVisible" title="交易单据详情" width="600px">
       <div v-if="selectedOrder" class="order-detail-container">
         <el-descriptions title="基本信息" :column="2" border>
@@ -198,7 +197,7 @@
 
 
 <script setup>
-import { ref, reactive, onMounted, computed, watch } from 'vue' // 🚀 新增 computed, watch
+import { ref, reactive, onMounted, computed, watch } from 'vue' 
 import request from '@/utils/request'
 import { getProfile } from '@/api/user' 
 import { ElMessage } from 'element-plus'
@@ -206,7 +205,6 @@ import { useRoute, useRouter } from 'vue-router'
 
 const route = useRoute()
 const router = useRouter()
-// 🚀 核心判断逻辑：是否为卖家模式（通过 URL 路径判断）
 const isSellerMode = computed(() => route.path.includes('sell-orders'))
 
 
@@ -260,14 +258,12 @@ const loadOrders = async () => {
   }
 }
 
-// 🚀 核心监听：路由变化时（从“买”点到“卖”）重新加载数据
+
 watch(() => route.path, () => {
   loadOrders()
 })
 
 const handlePay = (id) => {
-  // 这里的 id 是订单的主键 ID
-  // router 会带你去执行扫码、确认支付等一系列有“仪式感”的操作
   router.push(`/payment/${id}`)
 }
 
@@ -283,7 +279,7 @@ const handleShip = async (id) => {
   loadOrders()
 }
 
-// 🚀 补全申请客服介入逻辑
+
 const applyArbitration = async (id) => {
   await request({ url: `/trade/orders/${id}/apply_arbitration/`, method: 'post' })
   ElMessage.info('已申请客服介入，请关注通知')
@@ -370,14 +366,13 @@ const submitAdditionalReview = async () => {
   addReviewLoading.value = true
   try {
     await request({
-      // 对应后端 ReviewViewSet 中的 append_review 动作
       url: `/trade/reviews/${activeReviewId.value}/append_review/`,
       method: 'post',
       data: { content: addReviewForm.content }
     })
     ElMessage.success('追加评价成功！')
     addReviewVisible.value = false
-    loadOrders() // 刷新列表，按钮会根据 has_additional 自动切换状态
+    loadOrders()
   } catch (err) {
     console.error(err)
   } finally {
@@ -391,7 +386,7 @@ const showOrderDetail = (row) => {
   detailVisible.value = true
 }
 
-// 格式化时间的辅助函数 (提升企业级专业度)
+// 格式化时间的辅助函数
 const formatDate = (dateStr) => {
   if (!dateStr) return '-'
   const date = new Date(dateStr)
@@ -405,6 +400,5 @@ onMounted(() => {
 
 <style scoped>
 .order-container { padding: 0 20px 20px; }
-/* 去掉表格卡片的边框，让其在 UserLayout 中更好看 */
 .el-card { border: none; }
 </style>

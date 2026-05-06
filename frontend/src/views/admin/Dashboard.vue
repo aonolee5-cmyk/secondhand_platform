@@ -1,6 +1,5 @@
 <template>
   <div class="admin-dashboard">
-    <!-- 顶部数据卡片 (保持原样) -->
     <el-row :gutter="20">
       <el-col :span="6" v-for="card in statsCards" :key="card.title">
         <el-card shadow="hover" class="stat-card">
@@ -22,7 +21,6 @@
             <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
               <span style="font-weight: bold;">平台交易趋势分析</span>
               <div class="header-actions" style="display: flex; align-items: center; gap: 8px;">
-              <!-- 🚀 独立开始日期 -->
               <el-date-picker
                 v-model="startDate"
                 type="date"
@@ -32,7 +30,6 @@
                 style="width: 135px"
               />
               <span style="color: #999; font-size: 12px">至</span>
-              <!-- 🚀 独立结束日期 -->
               <el-date-picker
                 v-model="endDate"
                 type="date"
@@ -42,7 +39,6 @@
                 style="width: 135px"
               />
               
-              <!-- 🚀 你要求的确认按钮 -->
               <el-button 
                 type="primary" 
                 size="small" 
@@ -54,7 +50,6 @@
             </div>
             </div>
           </template>
-          <!-- 🚀 增加图表容器高度以容纳 DataZoom -->
           <div ref="lineChartRef" style="height: 380px"></div>
         </el-card>
       </el-col>
@@ -66,7 +61,7 @@
       </el-col>
     </el-row>
 
-    <!-- 待办任务：待审核商品列表 (代码同前，省略以节省篇幅) -->
+    <!-- 待办任务：待审核商品列表 -->
     <el-card header="待审核商品列表" style="margin-top: 25px" shadow="never">
        <el-table :data="auditList" stripe>
          <el-table-column label="商品名称">
@@ -87,7 +82,7 @@
        </el-table>
     </el-card>
 
-    <!-- 审计弹窗 (代码同前，省略以节省篇幅) -->
+    <!-- 审计弹窗 -->
     <el-dialog v-model="auditPreviewVisible" title="商品参数审计" width="750px" destroy-on-close>
        <!-- ... -->
     </el-dialog>
@@ -206,7 +201,6 @@ const initCharts = (data) => {
 }
 
 // --- 业务逻辑 ---
-
 const refreshDashboardData = async (start = '', end = '') => {
   try {
     const [statsRes, prodRes] = await Promise.all([

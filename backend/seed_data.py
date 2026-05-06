@@ -2,7 +2,6 @@ import os
 import django
 import random
 from datetime import datetime, timedelta, date
-# 🚀 1. 引入 Django 的时区工具
 from django.utils import timezone
 
 # 初始化 Django
@@ -16,7 +15,7 @@ from django.contrib.auth import get_user_model
 User = get_user_model()
 
 def seed_enterprise_data():
-    print("🚀 开始灌入跨季度运营模拟数据...")
+    print("开始灌入跨季度运营模拟数据...")
     
     start_date = date(2026, 1, 28)
     end_date = date.today()
@@ -25,7 +24,7 @@ def seed_enterprise_data():
     products = list(Product.objects.all())
     
     if not products:
-        print("❌ 错误：请先发布几个商品！")
+        print("错误：请先发布几个商品！")
         return
 
     current_date = start_date
@@ -41,7 +40,6 @@ def seed_enterprise_data():
                                         hours=random.randint(8, 23), 
                                         minutes=random.randint(0, 59))
             
-            # 🚀 2. 核心修复：将“朴素时间”转换为“带时区的觉醒时间”
             random_time = timezone.make_aware(naive_time)
             
             Order.objects.create(
@@ -56,10 +54,10 @@ def seed_enterprise_data():
             )
             total_count += 1
         
-        print(f"✅ 已完成 {current_date} 的数据模拟")
+        print(f"已完成 {current_date} 的数据模拟")
         current_date += timedelta(days=1)
 
-    print(f"✨ 成功！共生成 {total_count} 笔订单。警告已消除。")
+    print(f"成功！共生成 {total_count} 笔订单。警告已消除。")
 
 if __name__ == "__main__":
     seed_enterprise_data()

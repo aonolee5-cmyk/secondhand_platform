@@ -49,7 +49,7 @@
       </el-table>
     </el-card>
 
-    <!-- 新增对话框 -->
+
     <el-dialog v-model="dialogVisible" title="新增敏感词" width="400px">
       <el-form :model="form" @submit.prevent="submitAdd">
         <el-form-item label="关键词">
@@ -103,7 +103,7 @@ const submitAdd = async () => {
   submitting.value = true
   try {
     await request({ url: '/goods/admin/sensitive/', method: 'post', data: form })
-    ElMessage.success('词条已加入库')
+    ElMessage.success('词条已入库')
     dialogVisible.value = false
     fetchWords()
   } finally {

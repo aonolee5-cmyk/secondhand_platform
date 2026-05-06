@@ -2,7 +2,6 @@
   <div class="security-container">
     <h2 class="page-title">账号与安全</h2>
     
-    <!-- 🚀 安全等级提示 -->
     <el-alert
       :title="securityInfo.title"
       :type="securityInfo.type"
@@ -26,16 +25,15 @@
 
       <el-divider />
 
-      <!-- 2. 手机绑定 (从Profile同步状态) -->
+
       <div class="security-item">
         <div class="info">
-          <div class="label">手机绑定</div>
+          <div class="label">绑定手机号</div>
           <div class="status">已绑定：{{ maskedMobile }}</div>
         </div>
         <div class="action">
           <el-button link type="primary" @click="mobileDialogVisible = true">修改手机号</el-button>
         </div>
-        <!-- ... 在页面底部添加修改手机号的弹窗 ... -->
         <el-dialog v-model="mobileDialogVisible" title="修改绑定手机" width="400px">
           <el-form :model="mobileForm" :rules="mobileRules" ref="mobileFormRef" label-position="top">
             <el-alert 
@@ -61,7 +59,7 @@
 
       <el-divider />
 
-      <!-- 3. 实名认证状态 -->
+
       <div class="security-item">
         <div class="info">
           <div class="label">实名状态</div>
@@ -76,11 +74,11 @@
 
       <el-divider />
 
-      <!-- 4. 危险操作 -->
+
       <div class="security-item danger-zone">
         <div class="info">
           <div class="label">注销账号</div>
-          <div class="status">账号一旦注销，所有交易数据将无法找回</div>
+          <div class="status">账号一旦注销，所有数据将无法找回</div>
         </div>
         <div class="action">
           <el-button link type="danger" @click="handleDeleteAccount">注销</el-button>
@@ -179,12 +177,10 @@ const submitMobileChange = () => {
       })
       
       ElMessage.success('手机号修改成功')
-      // 更新本地显示的手机号
       user.value.mobile = mobileForm.new_mobile 
       mobileDialogVisible.value = false
       mobileForm.new_mobile = ''
     } catch (err) {
-      // 错误已由拦截器处理 (例如：手机号已存在)
     } finally {
       mobileLoading.value = false
     }

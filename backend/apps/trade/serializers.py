@@ -4,7 +4,7 @@ from goods.models import Product
 # from goods.serializers import ProductSerializer
 
 class CartSerializer(serializers.ModelSerializer):
-    # 额外显示商品信息，方便前端展示
+    # 额外显示商品信息
     product_title = serializers.ReadOnlyField(source='product.title')
     product_price = serializers.ReadOnlyField(source='product.price')
     product_image = serializers.SerializerMethodField()
@@ -22,7 +22,7 @@ class CartSerializer(serializers.ModelSerializer):
 class OrderSerializer(serializers.ModelSerializer):
     has_review = serializers.SerializerMethodField() # 是否已首评
     has_additional = serializers.SerializerMethodField() # 是否已追评
-    review_id = serializers.SerializerMethodField() # 评价ID，方便追评时调用
+    review_id = serializers.SerializerMethodField()
     product_title = serializers.ReadOnlyField(source='product.title')
     product_image = serializers.SerializerMethodField()
     buyer_name = serializers.ReadOnlyField(source='buyer.username')
@@ -30,7 +30,7 @@ class OrderSerializer(serializers.ModelSerializer):
     class Meta:
         model = Order
         fields = '__all__'
-        read_only_fields = ['order_sn', 'buyer', 'seller', 'total_amount', 'status', 'pay_time']
+        read_only_fields = ['order_sn', 'buyer', 'seller', 'total_amount', 'status', 'pay_time' ,'refund_reason']
 
     def get_product_image(self,obj):
         if obj.product.images and len(obj.product.images) > 0:

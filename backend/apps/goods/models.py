@@ -1,5 +1,6 @@
 from django.db import models
 from django.contrib.auth import get_user_model
+from django.contrib.postgres.indexes import GinIndex
 
 User = get_user_model()
 
@@ -24,7 +25,7 @@ class Category(models.Model):
         return self.name
 
 class Product(models.Model):
-    """二手商品模型"""
+    """二手物品模型"""
     STATUS_CHOICES = (
         ('audit', '审核中'),
         ('onsale', '在售'),
@@ -34,24 +35,26 @@ class Product(models.Model):
     )
     browse_count = models.PositiveIntegerField(default=0, verbose_name="浏览次数")
     owner = models.ForeignKey(User, on_delete=models.CASCADE, related_name="products", verbose_name="发布者")
-    category = models.ForeignKey(Category, on_delete=models.CASCADE, verbose_name="所属分类")
+    category = models.ForeignKey(Category, on_delete=models.CASCADE, db_index=True,verbose_name="所属分类")
     
     title = models.CharField(max_length=100, verbose_name="商品标题")
     desc = models.TextField(verbose_name="详细描述")
-    price = models.DecimalField(max_digits=10, decimal_places=2, verbose_name="价格")
+    price = models.DecimalField(max_digits=10, decimal_places=2, db_index=True, verbose_name="价格")
     
     # 使用jsonb字段来存储商品的动态属性
     attributes = models.JSONField(default=dict, blank=True, verbose_name="动态属性")
     
-    # 存储图片路径列表
     images = models.JSONField(default=list, verbose_name="图片列表")
     
-    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='audit')
+    status = models.CharField(max_length=10, choices=STATUS_CHOICES, db_index=True, default='audit')
     create_time = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        verbose_name = "二手商品"
+        verbose_name = "二手物品"
         verbose_name_plural = verbose_name
+        indexes = [
+            GinIndex(fields=['attributes'], name='idx_product_attrs_gin')
+        ]
 
 class SensitiveWord(models.Model):
     """敏感词库"""
@@ -64,3 +67,16 @@ class SensitiveWord(models.Model):
 
     def __str__(self):
         return self.word
+
+
+class BrowsingHistory(models.Model):
+    """浏览记录模型"""
+    user = models.ForeignKey('users.User', on_delete=models.CASCADE, verbose_name="用户")
+    product = models.ForeignKey('goods.Product', on_delete=models.CASCADE, verbose_name="商品")
+    viewed_time = models.DateTimeField(auto_now=True, verbose_name="最后浏览时间")
+
+    class Meta:
+        verbose_name = "浏览记录"
+        verbose_name_plural = verbose_name
+        unique_together = ('user', 'product')
+        ordering = ['-viewed_time']

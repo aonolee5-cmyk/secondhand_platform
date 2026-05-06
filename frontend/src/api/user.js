@@ -45,6 +45,15 @@ export function deleteAddress(id){
   })
 }
 
+// 修改用户收货地址
+export function updateAddress(id, data) {
+  return request({ 
+    url: `/users/addresses/${id}/`, 
+    method: 'put', 
+    data 
+  })
+}
+
 // 设置默认地址
 export function setDefaultAddress(id){
   return request({url: `/users/addresses/${id}/set_default/`,
