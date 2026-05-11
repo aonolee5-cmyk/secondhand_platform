@@ -4,7 +4,7 @@ from .serializers import ProductSerializer, SensitiveWordSerializer, CategorySer
 from rest_framework.decorators import action
 from rest_framework import viewsets, permissions, filters
 from users.permissions import IsOperationalManager, IsSystemAdmin
-
+from django.db.models import Count
 
 class AdminProductViewSet(viewsets.ModelViewSet):
     """

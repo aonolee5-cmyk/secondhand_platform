@@ -10,7 +10,7 @@ from rest_framework.routers import DefaultRouter
 router = DefaultRouter()
 router.register(r'addresses', AddressViewSet,basename='addresses')
 router.register(r'admin/users', AdminUserManagementViewSet, basename='admin-users')
-
+router.register(r'reports', ReportViewSet, basename='reports') 
 urlpatterns = [
      path('', include(router.urls)),
     # 注册接口
@@ -42,4 +42,6 @@ urlpatterns = [
     path('change-password/', ChangePasswordView.as_view()),
     # 修改手机号
     path('change-mobile/', ChangeMobileView.as_view()),
+    
+    path('',include(router.urls)),
 ]

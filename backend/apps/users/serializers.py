@@ -4,6 +4,7 @@ from django.contrib.auth import get_user_model
 from goods.models import Product, Category
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from django.contrib.auth import authenticate
+from .models import Report
 
 User = get_user_model()
 
@@ -119,3 +120,13 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
         
         return data
     
+
+
+class ReportSerializer(serializers.ModelSerializer):
+    # 自动关联举报人，设为只读
+    reporter_name = serializers.ReadOnlyField(source='reporter.username')
+
+    class Meta:
+        model = Report
+        fields = ['id', 'reporter', 'reporter_name', 'target_user', 'product', 'reason', 'content', 'status', 'create_time']
+        read_only_fields = ['reporter', 'status']

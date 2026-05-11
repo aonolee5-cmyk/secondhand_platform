@@ -18,6 +18,9 @@ from .serializers import CustomTokenObtainPairSerializer
 from django.contrib.auth.hashers import check_password
 from .services import CreditService
 from django.utils import timezone
+from .models import Report
+from .serializers import ReportSerializer
+
 
 User = get_user_model()
 
@@ -175,12 +178,8 @@ class ChangeMobileView(APIView):
     def post(self, request):
         user = request.user
         new_mobile = request.data.get('new_mobile')
-        
-        # 基础校验：非空
         if not new_mobile:
             return Response({'detail': '新手机号不能为空'}, status=status.HTTP_400_BAD_REQUEST)
-        
-        #  唯一性校验：确保新号码没被别人注册过
         if User.objects.filter(mobile=new_mobile).exclude(id=user.id).exists():
             return Response({'detail': '该手机号已被其他账号绑定'}, status=status.HTTP_400_BAD_REQUEST)
             
@@ -189,3 +188,21 @@ class ChangeMobileView(APIView):
         user.save()
         
         return Response({'detail': '手机号修改成功', 'mobile': new_mobile})
+    
+
+class ReportViewSet(viewsets.ModelViewSet):
+    """
+    用户举报接口
+    """
+    queryset = Report.objects.all()
+    serializer_class = ReportSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        # 普通用户只能看到自己发起的举报记录
+        if self.request.user.is_staff:
+            return Report.objects.all()
+        return Report.objects.filter(reporter=self.request.user)
+
+    def perform_create(self, serializer):
+        serializer.save(reporter=self.request.user)

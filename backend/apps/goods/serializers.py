@@ -2,6 +2,15 @@ from rest_framework import serializers
 from .models import Category, Product
 from .models import SensitiveWord
 from .models import BrowsingHistory
+from users.models import Report
+
+class ProductReportSerializer(serializers.ModelSerializer):
+    """专门用于审核页展示的简易举报序列化器"""
+    reporter_name = serializers.ReadOnlyField(source='reporter.username')
+    
+    class Meta:
+        model = Report
+        fields = ['reporter_name', 'reason', 'content', 'create_time', 'status']
 
 
 class CategorySerializer(serializers.ModelSerializer):
@@ -14,6 +23,7 @@ class ProductSerializer(serializers.ModelSerializer):
     owner_name = serializers.ReadOnlyField(source='owner.username')
     category_name = serializers.ReadOnlyField(source='category.name')
     is_favorited = serializers.SerializerMethodField()
+    reports = ProductReportSerializer(many=True, read_only=True, source='report_set') 
     class Meta:
         model = Product
         fields = '__all__'
